@@ -24,34 +24,29 @@ import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import OfflineIndicator from '@/components/common/OfflineIndicator';
 
 function App() {
-  const { isAuthenticated, user, checkAuth } = useAuthStore();
+  // TODO: Restaurar autenticación para producción
+  // const { isAuthenticated, user, checkAuth } = useAuthStore();
 
+  // useEffect(() => {
+  //   checkAuth();
+  // }, [checkAuth]);
+
+  // Conectar socket directamente sin autenticación
   useEffect(() => {
-    checkAuth();
-  }, [checkAuth]);
-
-  useEffect(() => {
-    if (isAuthenticated) {
-      socketService.connect();
-    } else {
-      socketService.disconnect();
-    }
-
+    socketService.connect();
     return () => {
       socketService.disconnect();
     };
-  }, [isAuthenticated]);
+  }, []);
 
   return (
     <>
       <Routes>
-        {/* Auth routes */}
+        {/* Auth routes - Desactivado para desarrollo */}
         <Route element={<AuthLayout />}>
           <Route
             path="/login"
-            element={
-              isAuthenticated ? <Navigate to="/" replace /> : <LoginPage />
-            }
+            element={<Navigate to="/" replace />}
           />
         </Route>
 

@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsOptional, IsInt, Min } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsInt, Min, Matches } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateZoneDto {
@@ -11,6 +11,12 @@ export class CreateZoneDto {
   @IsString()
   @IsOptional()
   description?: string;
+
+  @ApiPropertyOptional({ example: '#1890ff', description: 'Color hex para identificar la zona visualmente' })
+  @IsString()
+  @IsOptional()
+  @Matches(/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/, { message: 'Color must be a valid hex color' })
+  color?: string;
 
   @ApiPropertyOptional({ default: 0 })
   @IsInt()

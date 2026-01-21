@@ -20,13 +20,26 @@ interface AuthState {
   clearError: () => void;
 }
 
+// Usuario mock para desarrollo (sin autenticación)
+const mockAdminUser: User = {
+  id: 'dev-admin',
+  email: 'admin@tormel.com',
+  firstName: 'Admin',
+  lastName: 'Dev',
+  role: 'ADMIN',
+  isActive: true,
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
+};
+
 export const useAuthStore = create<AuthState>()(
   persist(
     (set, get) => ({
-      user: null,
-      accessToken: null,
-      refreshToken: null,
-      isAuthenticated: false,
+      // TODO: Restaurar para producción - cambiar a null y false
+      user: mockAdminUser,
+      accessToken: 'dev-token',
+      refreshToken: 'dev-refresh-token',
+      isAuthenticated: true,
       isLoading: false,
       error: null,
 

@@ -27,7 +27,23 @@ api.interceptors.request.use(
 
 // Response interceptor
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    const responseData = response.data as {
+      success?: boolean;
+      data?: unknown;
+    } | undefined;
+
+    if (
+      responseData &&
+      typeof responseData === 'object' &&
+      'success' in responseData &&
+      'data' in responseData
+    ) {
+      response.data = responseData.data;
+    }
+
+    return response;
+  },
   async (error: AxiosError) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
     

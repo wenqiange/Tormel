@@ -20,6 +20,7 @@ import { CreateZoneDto } from './dto/create-zone.dto';
 import { UpdateZoneDto } from './dto/update-zone.dto';
 import { OpenTableDto } from './dto/open-table.dto';
 import { Roles } from '../common/decorators/roles.decorator';
+import { Public } from '../common/decorators/public.decorator';
 
 @ApiTags('tables')
 @ApiBearerAuth()
@@ -32,7 +33,7 @@ export class TablesController {
   // ============================================
 
   @Post('zones')
-  @Roles(UserRole.ADMIN, UserRole.MANAGER)
+  @Public() // TODO: Restaurar @Roles después del desarrollo
   @ApiOperation({ summary: 'Create new zone' })
   @ApiResponse({ status: 201, description: 'Zone created successfully' })
   createZone(
@@ -43,6 +44,7 @@ export class TablesController {
   }
 
   @Get('zones')
+  @Public()
   @ApiOperation({ summary: 'Get all zones with tables' })
   @ApiResponse({ status: 200, description: 'List of zones' })
   @ApiQuery({ name: 'restaurantId', required: false })
@@ -82,7 +84,7 @@ export class TablesController {
   // ============================================
 
   @Post()
-  @Roles(UserRole.ADMIN, UserRole.MANAGER)
+  @Public() // TODO: Restaurar @Roles(UserRole.ADMIN, UserRole.MANAGER) después del desarrollo
   @ApiOperation({ summary: 'Create new table' })
   @ApiResponse({ status: 201, description: 'Table created successfully' })
   createTable(@Body() createTableDto: CreateTableDto) {
@@ -90,6 +92,7 @@ export class TablesController {
   }
 
   @Get()
+  @Public()
   @ApiOperation({ summary: 'Get all tables' })
   @ApiResponse({ status: 200, description: 'List of tables' })
   @ApiQuery({ name: 'zoneId', required: false })

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+                                                                                                                                                                                                                                                                                                                                                import { useState } from 'react';
 import { 
   Typography, Card, Table, Button, Space, Modal, Form, Input, 
   InputNumber, Select, Switch, message, Popconfirm, Tag, Row, Col 
@@ -31,7 +31,8 @@ export default function ProductsPage() {
     queryKey: ['products'],
     queryFn: async () => {
       const response = await api.get('/products');
-      return response.data;
+      const payload = response.data as { data?: Product[] } | Product[];
+      return Array.isArray(payload) ? payload : payload.data || [];
     },
   });
 
@@ -92,7 +93,27 @@ export default function ProductsPage() {
   });
 
   const handleProductSubmit = (values: any) => {
-    productMutation.mutate(values);
+    const payload: Partial<Product> & {
+      stockQty?: number;
+      trackStock?: boolean;
+      image?: string;
+    } = {
+      categoryId: values.categoryId,
+      name: values.name,
+      description: values.description,
+      price: values.price,
+      sku: values.sku,
+      preparationTime: values.preparationTime,
+      sendToKitchen: values.sendToKitchen,
+      image: values.imageUrl,
+    };
+
+    if (typeof values.stock === 'number') {
+      payload.trackStock = true;
+      payload.stockQty = values.stock;
+    }
+
+    productMutation.mutate(payload);
   };
 
   const handleCategorySubmit = (values: any) => {

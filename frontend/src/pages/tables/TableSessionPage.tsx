@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
   Row, Col, Card, Typography, Button, List, Tag, Space, Divider, 
-  Modal, InputNumber, Input, message, Spin, Empty, Popconfirm, Badge
+  Modal, InputNumber, Input, message, Spin, Empty, Popconfirm, Badge, Form
 } from 'antd';
 import {
   ArrowLeftOutlined,
@@ -31,6 +31,8 @@ export default function TableSessionPage() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [itemNotesModal, setItemNotesModal] = useState<{ visible: boolean; item?: CartItem }>({ visible: false });
   const [notesInput, setNotesInput] = useState('');
+  const [openSessionModal, setOpenSessionModal] = useState(false);
+  const [sessionForm] = Form.useForm();
 
   // Fetch table details with current session
   const { data: table, isLoading: tableLoading } = useQuery<Table>({
@@ -50,22 +52,24 @@ export default function TableSessionPage() {
     },
   });
 
+  const currentSession = table?.currentSession || table?.sessions?.[0];
+
   // Fetch orders for current session
   const { data: orders } = useQuery<Order[]>({
-    queryKey: ['table-orders', table?.currentSession?.id],
+    queryKey: ['table-orders', currentSession?.id],
     queryFn: async () => {
-      if (!table?.currentSession?.id) return [];
-      const response = await api.get(`/orders?tableSessionId=${table.currentSession.id}`);
+      if (!currentSession?.id) return [];
+      const response = await api.get(`/orders?tableSessionId=${currentSession.id}`);
       return response.data;
     },
-    enabled: !!table?.currentSession?.id,
+    enabled: !!currentSession?.id,
   });
 
   // Create order mutation
   const createOrderMutation = useMutation({
     mutationFn: async (items: { productId: string; quantity: number; notes?: string; modifiers?: string[] }[]) => {
       const response = await api.post('/orders', {
-        tableSessionId: table?.currentSession?.id,
+        tableSessionId: currentSession?.id,
         items,
       });
       return response.data;
@@ -92,6 +96,23 @@ export default function TableSessionPage() {
     },
     onError: () => {
       message.error('Error al cerrar la mesa');
+    },
+  });
+
+  // Open table session (from session page)
+  const openSessionMutation = useMutation({
+    mutationFn: async (data: { guestCount: number; guestName?: string }) => {
+      const response = await api.post(`/tables/${tableId}/open`, data);
+      return response.data;
+    },
+    onSuccess: () => {
+      message.success('Mesa abierta correctamente');
+      setOpenSessionModal(false);
+      sessionForm.resetFields();
+      queryClient.invalidateQueries({ queryKey: ['table', tableId] });
+    },
+    onError: () => {
+      message.error('Error al abrir la mesa');
     },
   });
 
@@ -140,7 +161,7 @@ export default function TableSessionPage() {
 
   const handleGoToBilling = () => {
     // Navigate to billing with this table's session
-    navigate(`/billing?tableSessionId=${table?.currentSession?.id}`);
+    navigate(`/billing?tableSessionId=${currentSession?.id}`);
   };
 
   const getStatusColor = (status: string) => {
@@ -188,15 +209,70 @@ export default function TableSessionPage() {
     );
   }
 
-  if (!table?.currentSession) {
+  if (!currentSession) {
     return (
       <Empty
         description="Esta mesa no tiene una sesión activa"
         style={{ marginTop: 100 }}
       >
-        <Button type="primary" onClick={() => navigate('/tables')}>
-          Volver a Mesas
-        </Button>
+        <Space>
+          <Button type="primary" onClick={() => setOpenSessionModal(true)}>
+            Abrir Mesa
+          </Button>
+          <Button onClick={() => navigate('/tables')}>
+            Volver a Mesas
+          </Button>
+        </Space>
+
+        <Modal
+          title={`Abrir Mesa ${table?.number ?? ''}`}
+          open={openSessionModal}
+          onCancel={() => {
+            setOpenSessionModal(false);
+            sessionForm.resetFields();
+          }}
+          footer={null}
+        >
+          <Form
+            form={sessionForm}
+            layout="vertical"
+            onFinish={(values) => openSessionMutation.mutate(values)}
+            initialValues={{ guestCount: 2 }}
+          >
+            <Form.Item
+              name="guestCount"
+              label="Número de comensales"
+              rules={[{ required: true, message: 'Ingrese el número de comensales' }]}
+            >
+              <InputNumber
+                min={1}
+                max={table?.capacity || 20}
+                style={{ width: '100%' }}
+                size="large"
+              />
+            </Form.Item>
+            <Form.Item
+              name="guestName"
+              label="Nombre del cliente (opcional)"
+            >
+              <Input placeholder="Nombre o referencia" size="large" />
+            </Form.Item>
+            <Form.Item>
+              <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
+                <Button onClick={() => setOpenSessionModal(false)}>
+                  Cancelar
+                </Button>
+                <Button
+                  type="primary"
+                  htmlType="submit"
+                  loading={openSessionMutation.isPending}
+                >
+                  Abrir Mesa
+                </Button>
+              </Space>
+            </Form.Item>
+          </Form>
+        </Modal>
       </Empty>
     );
   }
@@ -216,8 +292,8 @@ export default function TableSessionPage() {
                 Mesa {table.number}
               </Title>
               <Text type="secondary">
-                {table.currentSession.customerCount} comensales • 
-                Abierta: {new Date(table.currentSession.openedAt).toLocaleTimeString('es-ES', {
+                {currentSession?.guestCount || currentSession?.customerCount || 0} comensales • 
+                Abierta: {new Date(currentSession?.openedAt || new Date()).toLocaleTimeString('es-ES', {
                   hour: '2-digit',
                   minute: '2-digit',
                 })}

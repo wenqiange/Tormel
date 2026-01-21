@@ -98,36 +98,39 @@ async function main() {
   // Create zones
   const terrace = await prisma.zone.upsert({
     where: { id: 'zone-terrace' },
-    update: {},
+    update: { color: '#52c41a' },
     create: {
       id: 'zone-terrace',
       restaurantId: restaurant.id,
       name: 'Terraza',
       description: 'Zona exterior con vistas',
+      color: '#52c41a',
       sortOrder: 1,
     },
   });
 
   const mainHall = await prisma.zone.upsert({
     where: { id: 'zone-main' },
-    update: {},
+    update: { color: '#1890ff' },
     create: {
       id: 'zone-main',
       restaurantId: restaurant.id,
       name: 'Salón Principal',
       description: 'Zona interior principal',
+      color: '#1890ff',
       sortOrder: 2,
     },
   });
 
   const bar = await prisma.zone.upsert({
     where: { id: 'zone-bar' },
-    update: {},
+    update: { color: '#722ed1' },
     create: {
       id: 'zone-bar',
       restaurantId: restaurant.id,
       name: 'Barra',
       description: 'Zona de barra',
+      color: '#722ed1',
       sortOrder: 3,
     },
   });

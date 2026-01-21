@@ -42,16 +42,17 @@ import { TransformInterceptor } from './common/interceptors/transform.intercepto
     PrintingModule,
   ],
   providers: [
-    // Global JWT guard
-    {
-      provide: APP_GUARD,
-      useClass: JwtAuthGuard,
-    },
-    // Global roles guard
-    {
-      provide: APP_GUARD,
-      useClass: RolesGuard,
-    },
+    // TODO: Restaurar guards para producción
+    // Global JWT guard - DESACTIVADO para desarrollo
+    // {
+    //   provide: APP_GUARD,
+    //   useClass: JwtAuthGuard,
+    // },
+    // Global roles guard - DESACTIVADO para desarrollo
+    // {
+    //   provide: APP_GUARD,
+    //   useClass: RolesGuard,
+    // },
     // Response transformation
     {
       provide: APP_INTERCEPTOR,

@@ -15,14 +15,16 @@ export interface User {
 }
 
 // Table types
-export type TableStatus = 'AVAILABLE' | 'OCCUPIED' | 'RESERVED' | 'CLEANING';
-export type TableShape = 'SQUARE' | 'RECTANGLE' | 'CIRCLE';
+export type TableStatus = 'FREE' | 'OCCUPIED' | 'RESERVED' | 'BLOCKED';
+export type TableShape = 'square' | 'rectangle' | 'circle';
 
 export interface Zone {
   id: string;
   name: string;
   description?: string;
   color?: string;
+  sortOrder: number;
+  isActive: boolean;
   restaurantId: string;
   tables: Table[];
   createdAt: string;
@@ -36,23 +38,54 @@ export interface Table {
   capacity: number;
   status: TableStatus;
   shape: TableShape;
-  posX: number;
-  posY: number;
+  positionX: number;
+  positionY: number;
+  width: number;
+  height: number;
   zoneId: string;
   zone?: Zone;
+  sessions?: TableSession[];
   currentSession?: TableSession;
+  isActive: boolean;
   createdAt: string;
   updatedAt: string;
+}
+
+// Table position update for drag & drop
+export interface TablePositionUpdate {
+  id: string;
+  positionX: number;
+  positionY: number;
+}
+
+// Create/Update table DTOs
+export interface CreateTableData {
+  zoneId: string;
+  number: string;
+  name?: string;
+  capacity?: number;
+  positionX?: number;
+  positionY?: number;
+  width?: number;
+  height?: number;
+  shape?: TableShape;
+}
+
+export interface UpdateTableData extends Partial<CreateTableData> {
+  status?: TableStatus;
+  isActive?: boolean;
 }
 
 export interface TableSession {
   id: string;
   tableId: string;
   table?: Table;
-  waiterId: string;
+  waiterId?: string;
   waiter?: User;
-  customerCount: number;
-  customerName?: string;
+  guestCount: number;
+  guestName?: string;
+  customerCount?: number; // Alias for backward compatibility
+  customerName?: string;  // Alias for backward compatibility
   notes?: string;
   openedAt: string;
   closedAt?: string;
