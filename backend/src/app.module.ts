@@ -13,6 +13,7 @@ import { BillingModule } from './billing/billing.module';
 import { PaymentsModule } from './payments/payments.module';
 import { RealtimeModule } from './realtime/realtime.module';
 import { PrintingModule } from './printing/printing.module';
+import { DashboardModule } from './dashboard/dashboard.module';
 
 // Guards & Interceptors
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
@@ -40,6 +41,7 @@ import { TransformInterceptor } from './common/interceptors/transform.intercepto
     PaymentsModule,
     RealtimeModule,
     PrintingModule,
+    DashboardModule,
   ],
   providers: [
     // TODO: Restaurar guards para producción

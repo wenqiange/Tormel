@@ -184,7 +184,10 @@ export default function ProductsPage() {
             type="text"
             icon={<EditOutlined />}
             onClick={() => {
-              productForm.setFieldsValue(record);
+              productForm.setFieldsValue({
+                ...record,
+                imageUrl: record.image,
+              });
               setProductModal({ visible: true, product: record });
             }}
           />

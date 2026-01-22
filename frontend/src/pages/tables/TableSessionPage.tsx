@@ -67,9 +67,9 @@ export default function TableSessionPage() {
 
   // Create order mutation
   const createOrderMutation = useMutation({
-    mutationFn: async (items: { productId: string; quantity: number; notes?: string; modifiers?: string[] }[]) => {
+    mutationFn: async (items: { productId: string; quantity: number; notes?: string; modifierIds?: string[] }[]) => {
       const response = await api.post('/orders', {
-        tableSessionId: currentSession?.id,
+        tableId: tableId,
         items,
       });
       return response.data;
@@ -153,7 +153,7 @@ export default function TableSessionPage() {
       productId: item.product.id,
       quantity: item.quantity,
       notes: item.notes,
-      modifiers: item.modifiers?.map(m => m.id),
+      modifierIds: item.modifiers?.map(m => m.id),
     }));
 
     createOrderMutation.mutate(items);
@@ -360,7 +360,7 @@ export default function TableSessionPage() {
           {/* Products Grid */}
           <Card title="Productos" bodyStyle={{ padding: 16 }}>
             <div className="product-grid">
-              {filteredProducts.map(product => (
+              {filteredProducts.filter(Boolean).map(product => (
                 <Card
                   key={product.id}
                   className="product-card"
@@ -368,9 +368,9 @@ export default function TableSessionPage() {
                   hoverable
                   onClick={() => handleProductClick(product)}
                 >
-                  {product.imageUrl && (
+                  {product.image && (
                     <img
-                      src={product.imageUrl}
+                      src={product.image}
                       alt={product.name}
                       style={{ width: '100%', height: 80, objectFit: 'cover', borderRadius: 4, marginBottom: 8 }}
                     />

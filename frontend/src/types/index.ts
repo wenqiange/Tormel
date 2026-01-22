@@ -113,7 +113,7 @@ export interface Product {
   name: string;
   description?: string;
   price: number;
-  imageUrl?: string;
+  image?: string;
   barcode?: string;
   sku?: string;
   categoryId: string;
@@ -122,6 +122,12 @@ export interface Product {
   sendToKitchen: boolean;
   preparationTime?: number;
   stock?: number;
+  stockQty?: number;
+  trackStock?: boolean;
+  taxRate?: number;
+  cost?: number;
+  color?: string;
+  sortOrder?: number;
   modifierGroups?: ModifierGroup[];
   createdAt: string;
   updatedAt: string;
