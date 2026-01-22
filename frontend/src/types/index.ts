@@ -106,6 +106,9 @@ export interface Category {
   parent?: Category;
   children?: Category[];
   products: Product[];
+  _count?: {
+    products: number;
+  };
 }
 
 export interface Product {

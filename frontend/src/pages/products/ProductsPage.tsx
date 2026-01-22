@@ -226,31 +226,64 @@ export default function ProductsPage() {
           >
             <Space direction="vertical" style={{ width: '100%' }}>
               {categories?.map(category => (
-                <Card
-                  key={category.id}
-                  size="small"
-                  style={{ borderLeft: `4px solid ${category.color || '#1890ff'}` }}
-                >
-                  <Space style={{ width: '100%', justifyContent: 'space-between' }}>
-                    <div>
-                      <div style={{ fontWeight: 500 }}>{category.name}</div>
-                      <div style={{ fontSize: 12, color: '#666' }}>
-                        {category.products?.length || 0} productos
+                <div key={category.id}>
+                  <Card
+                    size="small"
+                    style={{ borderLeft: `4px solid ${category.color || '#1890ff'}` }}
+                  >
+                    <Space style={{ width: '100%', justifyContent: 'space-between' }}>
+                      <div>
+                        <div style={{ fontWeight: 500 }}>{category.name}</div>
+                        <div style={{ fontSize: 12, color: '#666' }}>
+                          {category._count?.products || category.products?.length || 0} productos
+                        </div>
                       </div>
-                    </div>
-                    <Space>
-                      <Button
-                        type="text"
-                        size="small"
-                        icon={<EditOutlined />}
-                        onClick={() => {
-                          categoryForm.setFieldsValue(category);
-                          setCategoryModal({ visible: true, category });
-                        }}
-                      />
+                      <Space>
+                        <Button
+                          type="text"
+                          size="small"
+                          icon={<EditOutlined />}
+                          onClick={() => {
+                            categoryForm.setFieldsValue(category);
+                            setCategoryModal({ visible: true, category });
+                          }}
+                        />
+                      </Space>
                     </Space>
-                  </Space>
-                </Card>
+                  </Card>
+                  {/* Subcategories */}
+                  {category.children && category.children.length > 0 && (
+                    <div style={{ marginLeft: 16, marginTop: 8 }}>
+                      {category.children.map(child => (
+                        <Card
+                          key={child.id}
+                          size="small"
+                          style={{ 
+                            borderLeft: `4px solid ${child.color || category.color || '#1890ff'}`,
+                            marginBottom: 8
+                          }}
+                        >
+                          <Space style={{ width: '100%', justifyContent: 'space-between' }}>
+                            <div>
+                              <div style={{ fontWeight: 500 }}>└ {child.name}</div>
+                            </div>
+                            <Space>
+                              <Button
+                                type="text"
+                                size="small"
+                                icon={<EditOutlined />}
+                                onClick={() => {
+                                  categoryForm.setFieldsValue(child);
+                                  setCategoryModal({ visible: true, category: child });
+                                }}
+                              />
+                            </Space>
+                          </Space>
+                        </Card>
+                      ))}
+                    </div>
+                  )}
+                </div>
               ))}
             </Space>
           </Card>
@@ -314,10 +347,18 @@ export default function ProductsPage() {
                 label="Categoría"
                 rules={[{ required: true, message: 'Seleccione una categoría' }]}
               >
-                <Select
-                  options={categories?.map(c => ({ value: c.id, label: c.name }))}
-                  placeholder="Seleccionar categoría"
-                />
+                <Select placeholder="Seleccionar categoría">
+                  {categories?.map(c => (
+                    <Select.OptGroup key={c.id} label={c.name}>
+                      <Select.Option value={c.id}>{c.name}</Select.Option>
+                      {c.children?.map(child => (
+                        <Select.Option key={child.id} value={child.id}>
+                          └ {child.name}
+                        </Select.Option>
+                      ))}
+                    </Select.OptGroup>
+                  ))}
+                </Select>
               </Form.Item>
             </Col>
           </Row>

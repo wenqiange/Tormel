@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
   Row, Col, Card, Typography, Button, List, Tag, Space, Divider, 
-  Modal, InputNumber, Input, message, Spin, Empty, Popconfirm, Badge, Form
+  Modal, InputNumber, Input, message, Spin, Empty, Popconfirm, Badge, Form,
+  Checkbox, Select, Tabs, Alert
 } from 'antd';
 import {
   ArrowLeftOutlined,
@@ -12,11 +13,19 @@ import {
   CloseCircleOutlined,
   EditOutlined,
   DeleteOutlined,
+  MinusOutlined,
+  ShoppingCartOutlined,
+  CheckCircleOutlined,
+  WalletOutlined,
+  CreditCardOutlined,
+  BankOutlined,
+  GiftOutlined,
+  SplitCellsOutlined,
 } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/services/api';
 import { socketService } from '@/services/socket';
-import { Table, Category, Product, Order, OrderItem, CartItem } from '@/types';
+import { Table, Category, Product, Order, OrderItem, CartItem, PaymentMethod } from '@/types';
 import { useCartStore } from '@/stores/cartStore';
 
 const { Title, Text } = Typography;
@@ -26,13 +35,17 @@ export default function TableSessionPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   
-  const { items: cartItems, addItem, removeItem, updateQuantity, clearCart, getTotal } = useCartStore();
+  const { items: cartItems, addItem, removeItem, updateQuantity, clearCart, getTotal, updateNotes } = useCartStore();
   
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [itemNotesModal, setItemNotesModal] = useState<{ visible: boolean; item?: CartItem }>({ visible: false });
   const [notesInput, setNotesInput] = useState('');
-  const [openSessionModal, setOpenSessionModal] = useState(false);
-  const [sessionForm] = Form.useForm();
+  
+  // Payment modal states
+  const [paymentModal, setPaymentModal] = useState(false);
+  const [splitPaymentModal, setSplitPaymentModal] = useState(false);
+  const [selectedItemsForPayment, setSelectedItemsForPayment] = useState<string[]>([]);
+  const [paymentForm] = Form.useForm();
 
   // Fetch table details with current session
   const { data: table, isLoading: tableLoading } = useQuery<Table>({
@@ -43,7 +56,7 @@ export default function TableSessionPage() {
     },
   });
 
-  // Fetch categories with products
+  // Fetch categories
   const { data: categories } = useQuery<Category[]>({
     queryKey: ['categories'],
     queryFn: async () => {
@@ -51,6 +64,19 @@ export default function TableSessionPage() {
       return response.data;
     },
   });
+
+  // Fetch all products
+  const { data: productsResponse } = useQuery<{ data: Product[]; meta?: { total: number } }>({
+    queryKey: ['all-products'],
+    queryFn: async () => {
+      const response = await api.get('/products?limit=100');
+      // API returns { data: [...], meta: {...} } after interceptor unwraps success wrapper
+      return response.data;
+    },
+  });
+
+  // Extract products array from paginated response
+  const allProducts = Array.isArray(productsResponse?.data) ? productsResponse.data : [];
 
   const currentSession = table?.currentSession || table?.sessions?.[0];
 
@@ -75,12 +101,59 @@ export default function TableSessionPage() {
       return response.data;
     },
     onSuccess: () => {
-      message.success('Pedido enviado a cocina');
+      message.success('Pedido enviado correctamente');
       clearCart();
       queryClient.invalidateQueries({ queryKey: ['table-orders'] });
     },
     onError: () => {
       message.error('Error al crear el pedido');
+    },
+  });
+
+  // Create bill mutation
+  const createBillMutation = useMutation({
+    mutationFn: async (data: { tableSessionId: string; orderItemIds?: string[] }) => {
+      const response = await api.post('/bills', data);
+      return response.data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['table-orders'] });
+      return data;
+    },
+    onError: () => {
+      message.error('Error al crear la cuenta');
+    },
+  });
+
+  // Process payment mutation
+  const paymentMutation = useMutation({
+    mutationFn: async (data: { billId: string; amount: number; method: PaymentMethod; reference?: string; closeTable?: boolean }) => {
+      const response = await api.post('/payments', data);
+      return { ...response.data, closeTable: data.closeTable };
+    },
+    onSuccess: async (data) => {
+      message.success('Pago procesado correctamente');
+      queryClient.invalidateQueries({ queryKey: ['table-orders'] });
+      queryClient.invalidateQueries({ queryKey: ['table', tableId] });
+      setPaymentModal(false);
+      setSplitPaymentModal(false);
+      paymentForm.resetFields();
+      setSelectedItemsForPayment([]);
+      
+      // If full payment was processed, close the table and navigate
+      if (data.closeTable) {
+        try {
+          await api.post(`/tables/${tableId}/close`);
+          message.success('Mesa cerrada y liberada');
+          navigate('/tables');
+        } catch (err) {
+          // Table might have remaining items, don't show error
+          queryClient.invalidateQueries({ queryKey: ['table', tableId] });
+        }
+      }
+    },
+    onError: () => {
+      message.error('Error al procesar el pago');
     },
   });
 
@@ -99,16 +172,14 @@ export default function TableSessionPage() {
     },
   });
 
-  // Open table session (from session page)
+  // Open table session (from session page) - direct without asking
   const openSessionMutation = useMutation({
-    mutationFn: async (data: { guestCount: number; guestName?: string }) => {
-      const response = await api.post(`/tables/${tableId}/open`, data);
+    mutationFn: async () => {
+      const response = await api.post(`/tables/${tableId}/open`, { guestCount: 1 });
       return response.data;
     },
     onSuccess: () => {
       message.success('Mesa abierta correctamente');
-      setOpenSessionModal(false);
-      sessionForm.resetFields();
       queryClient.invalidateQueries({ queryKey: ['table', tableId] });
     },
     onError: () => {
@@ -139,6 +210,26 @@ export default function TableSessionPage() {
     };
   }, [tableId, queryClient]);
 
+  // Get all unbilled order items
+  const allOrderItems = useMemo(() => {
+    if (!orders) return [];
+    return orders.flatMap(order => 
+      order.items.filter(item => !item.isBilled && item.status !== 'CANCELLED')
+    );
+  }, [orders]);
+
+  // Calculate total of unbilled items
+  const totalUnbilledAmount = useMemo(() => {
+    return allOrderItems.reduce((sum, item) => sum + item.totalPrice, 0);
+  }, [allOrderItems]);
+
+  // Calculate total of selected items for split payment
+  const selectedItemsTotal = useMemo(() => {
+    return allOrderItems
+      .filter(item => selectedItemsForPayment.includes(item.id))
+      .reduce((sum, item) => sum + item.totalPrice, 0);
+  }, [allOrderItems, selectedItemsForPayment]);
+
   const handleProductClick = (product: Product) => {
     addItem(product, 1);
   };
@@ -157,6 +248,72 @@ export default function TableSessionPage() {
     }));
 
     createOrderMutation.mutate(items);
+  };
+
+  // Handle full payment
+  const handleFullPayment = async () => {
+    if (allOrderItems.length === 0) {
+      message.warning('No hay productos pendientes de cobro');
+      return;
+    }
+    setPaymentModal(true);
+    paymentForm.setFieldsValue({ amount: totalUnbilledAmount, method: 'CASH' });
+  };
+
+  // Handle split payment mode
+  const handleSplitPaymentMode = () => {
+    if (allOrderItems.length === 0) {
+      message.warning('No hay productos pendientes de cobro');
+      return;
+    }
+    setSelectedItemsForPayment([]);
+    setSplitPaymentModal(true);
+  };
+
+  // Process payment
+  const handleProcessPayment = async (values: { amount: number; method: PaymentMethod; reference?: string }, itemIds?: string[]) => {
+    try {
+      // Determine if this is a full payment (all items)
+      const isFullPayment = !itemIds || itemIds.length === allOrderItems.length;
+      
+      // Create bill with selected items or all items
+      const billData = {
+        tableSessionId: currentSession!.id,
+        orderItemIds: itemIds || allOrderItems.map(item => item.id),
+      };
+      
+      const billResponse = await createBillMutation.mutateAsync(billData);
+      
+      // Process payment for the bill
+      await paymentMutation.mutateAsync({
+        billId: billResponse.id,
+        amount: values.amount,
+        method: values.method,
+        reference: values.reference,
+        closeTable: isFullPayment, // Close table if full payment
+      });
+    } catch (error) {
+      // Error handling is done in mutation
+    }
+  };
+
+  // Toggle item selection for split payment
+  const toggleItemSelection = (itemId: string) => {
+    setSelectedItemsForPayment(prev => 
+      prev.includes(itemId) 
+        ? prev.filter(id => id !== itemId)
+        : [...prev, itemId]
+    );
+  };
+
+  // Select all items
+  const selectAllItems = () => {
+    setSelectedItemsForPayment(allOrderItems.map(item => item.id));
+  };
+
+  // Deselect all items
+  const deselectAllItems = () => {
+    setSelectedItemsForPayment([]);
   };
 
   const handleGoToBilling = () => {
@@ -193,9 +350,22 @@ export default function TableSessionPage() {
     }).format(amount);
   };
 
-  const filteredProducts = selectedCategory
-    ? categories?.find(c => c.id === selectedCategory)?.products || []
-    : categories?.flatMap(c => c.products) || [];
+  // Get products filtered by category (including subcategories)
+  const filteredProducts = useMemo(() => {
+    if (!allProducts || allProducts.length === 0) return [];
+    if (!selectedCategory) return allProducts.filter(p => p.isActive);
+    
+    // Find selected category and get its children IDs
+    const selectedCat = categories?.find(c => c.id === selectedCategory);
+    const categoryIds = [selectedCategory];
+    
+    // Add children category IDs if any
+    if (selectedCat?.children && selectedCat.children.length > 0) {
+      categoryIds.push(...selectedCat.children.map(child => child.id));
+    }
+    
+    return allProducts.filter(p => categoryIds.includes(p.categoryId) && p.isActive);
+  }, [allProducts, selectedCategory, categories]);
 
   const totalOrdersAmount = orders?.reduce((sum, order) => 
     sum + order.items.reduce((itemSum, item) => itemSum + item.totalPrice, 0)
@@ -216,71 +386,25 @@ export default function TableSessionPage() {
         style={{ marginTop: 100 }}
       >
         <Space>
-          <Button type="primary" onClick={() => setOpenSessionModal(true)}>
+          <Button 
+            type="primary" 
+            onClick={() => openSessionMutation.mutate()}
+            loading={openSessionMutation.isPending}
+          >
             Abrir Mesa
           </Button>
           <Button onClick={() => navigate('/tables')}>
             Volver a Mesas
           </Button>
         </Space>
-
-        <Modal
-          title={`Abrir Mesa ${table?.number ?? ''}`}
-          open={openSessionModal}
-          onCancel={() => {
-            setOpenSessionModal(false);
-            sessionForm.resetFields();
-          }}
-          footer={null}
-        >
-          <Form
-            form={sessionForm}
-            layout="vertical"
-            onFinish={(values) => openSessionMutation.mutate(values)}
-            initialValues={{ guestCount: 2 }}
-          >
-            <Form.Item
-              name="guestCount"
-              label="Número de comensales"
-              rules={[{ required: true, message: 'Ingrese el número de comensales' }]}
-            >
-              <InputNumber
-                min={1}
-                max={table?.capacity || 20}
-                style={{ width: '100%' }}
-                size="large"
-              />
-            </Form.Item>
-            <Form.Item
-              name="guestName"
-              label="Nombre del cliente (opcional)"
-            >
-              <Input placeholder="Nombre o referencia" size="large" />
-            </Form.Item>
-            <Form.Item>
-              <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
-                <Button onClick={() => setOpenSessionModal(false)}>
-                  Cancelar
-                </Button>
-                <Button
-                  type="primary"
-                  htmlType="submit"
-                  loading={openSessionMutation.isPending}
-                >
-                  Abrir Mesa
-                </Button>
-              </Space>
-            </Form.Item>
-          </Form>
-        </Modal>
       </Empty>
     );
   }
 
   return (
-    <div>
+    <div style={{ height: 'calc(100vh - 120px)', display: 'flex', flexDirection: 'column' }}>
       {/* Header */}
-      <Row justify="space-between" align="middle" style={{ marginBottom: 24 }}>
+      <Row justify="space-between" align="middle" style={{ marginBottom: 16, flexShrink: 0 }}>
         <Col>
           <Space>
             <Button 
@@ -289,7 +413,7 @@ export default function TableSessionPage() {
             />
             <div>
               <Title level={3} style={{ margin: 0 }}>
-                Mesa {table.number}
+                Mesa {table?.number}
               </Title>
               <Text type="secondary">
                 {currentSession?.guestCount || currentSession?.customerCount || 0} comensales • 
@@ -305,13 +429,6 @@ export default function TableSessionPage() {
           <Space>
             <Button icon={<PrinterOutlined />}>
               Imprimir
-            </Button>
-            <Button 
-              type="primary" 
-              icon={<DollarOutlined />}
-              onClick={handleGoToBilling}
-            >
-              Cobrar
             </Button>
             <Popconfirm
               title="¿Cerrar mesa?"
@@ -332,24 +449,29 @@ export default function TableSessionPage() {
         </Col>
       </Row>
 
-      <Row gutter={24}>
-        {/* Products Section */}
-        <Col xs={24} lg={14}>
+      <Row gutter={16} style={{ flex: 1, overflow: 'hidden' }}>
+        {/* LEFT SIDE - Products Catalog */}
+        <Col xs={24} lg={14} style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
           {/* Categories */}
-          <Card size="small" style={{ marginBottom: 16 }}>
-            <Space wrap>
+          <Card size="small" style={{ marginBottom: 12, flexShrink: 0 }}>
+            <Space wrap size={[8, 8]}>
               <Button
                 type={selectedCategory === null ? 'primary' : 'default'}
                 onClick={() => setSelectedCategory(null)}
+                size="middle"
               >
                 Todos
               </Button>
-              {categories?.map(category => (
+              {categories?.filter(c => c.isActive).map(category => (
                 <Button
                   key={category.id}
                   type={selectedCategory === category.id ? 'primary' : 'default'}
                   onClick={() => setSelectedCategory(category.id)}
-                  style={category.color ? { borderColor: category.color } : undefined}
+                  style={selectedCategory !== category.id && category.color ? { 
+                    borderColor: category.color,
+                    color: category.color 
+                  } : undefined}
+                  size="middle"
                 >
                   {category.name}
                 </Button>
@@ -358,168 +480,273 @@ export default function TableSessionPage() {
           </Card>
 
           {/* Products Grid */}
-          <Card title="Productos" bodyStyle={{ padding: 16 }}>
-            <div className="product-grid">
+          <Card 
+            title={<Space><ShoppingCartOutlined /> Productos</Space>}
+            bodyStyle={{ padding: 12, overflow: 'auto', height: 'calc(100% - 57px)' }}
+            style={{ flex: 1, overflow: 'hidden' }}
+          >
+            <div style={{ 
+              display: 'grid', 
+              gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', 
+              gap: 12 
+            }}>
               {filteredProducts.filter(Boolean).map(product => (
                 <Card
                   key={product.id}
-                  className="product-card"
                   size="small"
                   hoverable
                   onClick={() => handleProductClick(product)}
+                  style={{ 
+                    cursor: 'pointer',
+                    borderColor: product.color || undefined,
+                    transition: 'all 0.2s'
+                  }}
+                  bodyStyle={{ padding: 12 }}
                 >
                   {product.image && (
                     <img
                       src={product.image}
                       alt={product.name}
-                      style={{ width: '100%', height: 80, objectFit: 'cover', borderRadius: 4, marginBottom: 8 }}
+                      style={{ 
+                        width: '100%', 
+                        height: 60, 
+                        objectFit: 'cover', 
+                        borderRadius: 4, 
+                        marginBottom: 8 
+                      }}
                     />
                   )}
-                  <Text strong style={{ display: 'block' }}>{product.name}</Text>
-                  <Text type="success">{formatCurrency(product.price)}</Text>
+                  <Text strong style={{ display: 'block', fontSize: 13, marginBottom: 4 }}>
+                    {product.name}
+                  </Text>
+                  <Text type="success" style={{ fontSize: 14, fontWeight: 600 }}>
+                    {formatCurrency(product.price)}
+                  </Text>
+                  {product.trackStock && product.stockQty !== undefined && product.stockQty <= 5 && (
+                    <Tag color="orange" style={{ fontSize: 10, marginTop: 4 }}>
+                      Stock: {product.stockQty}
+                    </Tag>
+                  )}
                 </Card>
               ))}
+              {filteredProducts.length === 0 && (
+                <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: 40 }}>
+                  <Empty description="No hay productos en esta categoría" />
+                </div>
+              )}
             </div>
           </Card>
         </Col>
 
-        {/* Order Section */}
-        <Col xs={24} lg={10}>
-          {/* Current Cart */}
-          <Card 
-            title={
-              <Space>
-                <span>Nuevo Pedido</span>
-                {cartItems.length > 0 && (
-                  <Badge count={cartItems.reduce((sum, item) => sum + item.quantity, 0)} />
-                )}
-              </Space>
-            }
-            extra={
-              cartItems.length > 0 && (
-                <Button type="link" danger onClick={clearCart}>
-                  Limpiar
-                </Button>
-              )
-            }
-            style={{ marginBottom: 16 }}
-          >
-            {cartItems.length === 0 ? (
-              <Empty description="Añada productos al pedido" />
-            ) : (
-              <>
-                <List
-                  className="order-items-list"
-                  dataSource={cartItems}
-                  renderItem={(item) => (
-                    <List.Item
-                      actions={[
-                        <Button
-                          type="text"
-                          size="small"
-                          icon={<EditOutlined />}
-                          onClick={() => {
-                            setItemNotesModal({ visible: true, item });
-                            setNotesInput(item.notes || '');
-                          }}
-                        />,
-                        <Button
-                          type="text"
-                          size="small"
-                          danger
-                          icon={<DeleteOutlined />}
-                          onClick={() => removeItem(item.product.id)}
-                        />,
-                      ]}
-                    >
-                      <List.Item.Meta
-                        title={item.product.name}
-                        description={item.notes && <Text type="secondary" style={{ fontSize: 12 }}>{item.notes}</Text>}
+        {/* RIGHT SIDE - Order & Payment */}
+        <Col xs={24} lg={10} style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+          <Tabs 
+            defaultActiveKey="cart" 
+            style={{ height: '100%' }}
+            items={[
+              {
+                key: 'cart',
+                label: (
+                  <Space>
+                    <PlusOutlined />
+                    Nuevo Pedido
+                    {cartItems.length > 0 && (
+                      <Badge count={cartItems.reduce((sum, item) => sum + item.quantity, 0)} size="small" />
+                    )}
+                  </Space>
+                ),
+                children: (
+                  <Card 
+                    style={{ height: 'calc(100vh - 280px)', display: 'flex', flexDirection: 'column' }}
+                    bodyStyle={{ flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column' }}
+                    extra={
+                      cartItems.length > 0 && (
+                        <Button type="link" danger size="small" onClick={clearCart}>
+                          Limpiar
+                        </Button>
+                      )
+                    }
+                  >
+                    {cartItems.length === 0 ? (
+                      <Empty 
+                        description="Selecciona productos del catálogo" 
+                        style={{ margin: 'auto' }}
                       />
-                      <Space>
-                        <Button
-                          size="small"
-                          onClick={() => updateQuantity(item.product.id, item.quantity - 1)}
-                        >
-                          -
-                        </Button>
-                        <Text>{item.quantity}</Text>
-                        <Button
-                          size="small"
-                          onClick={() => updateQuantity(item.product.id, item.quantity + 1)}
-                        >
-                          +
-                        </Button>
-                        <Text strong style={{ minWidth: 60, textAlign: 'right' }}>
-                          {formatCurrency(item.product.price * item.quantity)}
-                        </Text>
-                      </Space>
-                    </List.Item>
-                  )}
-                />
-                <Divider />
-                <Row justify="space-between" align="middle">
-                  <Col>
-                    <Text strong style={{ fontSize: 18 }}>Total</Text>
-                  </Col>
-                  <Col>
-                    <Text strong style={{ fontSize: 18 }}>{formatCurrency(getTotal())}</Text>
-                  </Col>
-                </Row>
-                <Button
-                  type="primary"
-                  block
-                  size="large"
-                  icon={<PlusOutlined />}
-                  style={{ marginTop: 16 }}
-                  onClick={handleSendOrder}
-                  loading={createOrderMutation.isPending}
-                >
-                  Enviar Pedido
-                </Button>
-              </>
-            )}
-          </Card>
-
-          {/* Previous Orders */}
-          <Card 
-            title="Pedidos de la Mesa"
-            extra={<Text strong>{formatCurrency(totalOrdersAmount)}</Text>}
-          >
-            {!orders || orders.length === 0 ? (
-              <Empty description="Sin pedidos aún" />
-            ) : (
-              <List
-                dataSource={orders}
-                renderItem={(order) => (
-                  <List.Item>
-                    <List.Item.Meta
-                      title={
-                        <Space>
-                          <Text>Pedido #{order.orderNumber || order.id.slice(-6)}</Text>
-                          <Tag color={getStatusColor(order.status)}>
-                            {getStatusLabel(order.status)}
-                          </Tag>
-                        </Space>
-                      }
-                      description={
-                        <Space direction="vertical" size={0}>
-                          {order.items.map((item: OrderItem) => (
-                            <Text key={item.id} type="secondary" style={{ fontSize: 12 }}>
-                              {item.quantity}x {item.product?.name || 'Producto'}
+                    ) : (
+                      <>
+                        <List
+                          style={{ flex: 1, overflow: 'auto' }}
+                          dataSource={cartItems}
+                          renderItem={(item) => (
+                            <List.Item style={{ padding: '8px 0' }}>
+                              <div style={{ width: '100%' }}>
+                                <Row justify="space-between" align="middle">
+                                  <Col flex="1">
+                                    <Text strong>{item.product.name}</Text>
+                                    <br />
+                                    <Text type="secondary" style={{ fontSize: 12 }}>
+                                      {formatCurrency(item.product.price)} c/u
+                                    </Text>
+                                    {item.notes && (
+                                      <Text type="secondary" style={{ fontSize: 11, display: 'block' }}>
+                                        📝 {item.notes}
+                                      </Text>
+                                    )}
+                                  </Col>
+                                  <Col>
+                                    <Space>
+                                      <Button
+                                        size="small"
+                                        icon={<MinusOutlined />}
+                                        onClick={() => updateQuantity(item.product.id, item.quantity - 1)}
+                                      />
+                                      <Text style={{ minWidth: 24, textAlign: 'center' }}>{item.quantity}</Text>
+                                      <Button
+                                        size="small"
+                                        icon={<PlusOutlined />}
+                                        onClick={() => updateQuantity(item.product.id, item.quantity + 1)}
+                                      />
+                                    </Space>
+                                  </Col>
+                                  <Col style={{ minWidth: 70, textAlign: 'right' }}>
+                                    <Text strong>{formatCurrency(item.product.price * item.quantity)}</Text>
+                                  </Col>
+                                  <Col>
+                                    <Space size={4}>
+                                      <Button
+                                        type="text"
+                                        size="small"
+                                        icon={<EditOutlined />}
+                                        onClick={() => {
+                                          setItemNotesModal({ visible: true, item });
+                                          setNotesInput(item.notes || '');
+                                        }}
+                                      />
+                                      <Button
+                                        type="text"
+                                        size="small"
+                                        danger
+                                        icon={<DeleteOutlined />}
+                                        onClick={() => removeItem(item.product.id)}
+                                      />
+                                    </Space>
+                                  </Col>
+                                </Row>
+                              </div>
+                            </List.Item>
+                          )}
+                        />
+                        <Divider style={{ margin: '12px 0' }} />
+                        <Row justify="space-between" align="middle" style={{ marginBottom: 12 }}>
+                          <Col>
+                            <Text strong style={{ fontSize: 18 }}>TOTAL</Text>
+                          </Col>
+                          <Col>
+                            <Text strong style={{ fontSize: 20, color: '#52c41a' }}>
+                              {formatCurrency(getTotal())}
                             </Text>
-                          ))}
+                          </Col>
+                        </Row>
+                        <Button
+                          type="primary"
+                          block
+                          size="large"
+                          icon={<CheckCircleOutlined />}
+                          onClick={handleSendOrder}
+                          loading={createOrderMutation.isPending}
+                        >
+                          Enviar Pedido
+                        </Button>
+                      </>
+                    )}
+                  </Card>
+                ),
+              },
+              {
+                key: 'orders',
+                label: (
+                  <Space>
+                    <DollarOutlined />
+                    Cuenta Mesa
+                    {allOrderItems.length > 0 && (
+                      <Badge count={allOrderItems.length} size="small" color="green" />
+                    )}
+                  </Space>
+                ),
+                children: (
+                  <Card 
+                    style={{ height: 'calc(100vh - 280px)', display: 'flex', flexDirection: 'column' }}
+                    bodyStyle={{ flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column' }}
+                  >
+                    {allOrderItems.length === 0 ? (
+                      <Empty 
+                        description="No hay productos pendientes de cobro" 
+                        style={{ margin: 'auto' }}
+                      />
+                    ) : (
+                      <>
+                        <List
+                          style={{ flex: 1, overflow: 'auto' }}
+                          dataSource={allOrderItems}
+                          renderItem={(item: OrderItem) => (
+                            <List.Item style={{ padding: '8px 0' }}>
+                              <Row style={{ width: '100%' }} justify="space-between" align="middle">
+                                <Col flex="1">
+                                  <Text>{item.quantity}x {item.product?.name || 'Producto'}</Text>
+                                  <br />
+                                  <Space size={4}>
+                                    <Tag color={getStatusColor(item.status)} style={{ fontSize: 10 }}>
+                                      {getStatusLabel(item.status)}
+                                    </Tag>
+                                    {item.notes && (
+                                      <Text type="secondary" style={{ fontSize: 10 }}>📝 {item.notes}</Text>
+                                    )}
+                                  </Space>
+                                </Col>
+                                <Col style={{ minWidth: 70, textAlign: 'right' }}>
+                                  <Text strong>{formatCurrency(item.totalPrice)}</Text>
+                                </Col>
+                              </Row>
+                            </List.Item>
+                          )}
+                        />
+                        <Divider style={{ margin: '12px 0' }} />
+                        <Row justify="space-between" align="middle" style={{ marginBottom: 16 }}>
+                          <Col>
+                            <Text strong style={{ fontSize: 18 }}>TOTAL A COBRAR</Text>
+                          </Col>
+                          <Col>
+                            <Text strong style={{ fontSize: 20, color: '#1890ff' }}>
+                              {formatCurrency(totalUnbilledAmount)}
+                            </Text>
+                          </Col>
+                        </Row>
+                        <Space direction="vertical" style={{ width: '100%' }} size={8}>
+                          <Button
+                            type="primary"
+                            block
+                            size="large"
+                            icon={<DollarOutlined />}
+                            onClick={handleFullPayment}
+                          >
+                            Cobrar Todo ({formatCurrency(totalUnbilledAmount)})
+                          </Button>
+                          <Button
+                            block
+                            size="large"
+                            icon={<SplitCellsOutlined />}
+                            onClick={handleSplitPaymentMode}
+                          >
+                            Cobrar por Separado
+                          </Button>
                         </Space>
-                      }
-                    />
-                    <Text strong>
-                      {formatCurrency(order.items.reduce((sum: number, item: OrderItem) => sum + item.totalPrice, 0))}
-                    </Text>
-                  </List.Item>
-                )}
-              />
-            )}
-          </Card>
+                      </>
+                    )}
+                  </Card>
+                ),
+              },
+            ]}
+          />
         </Col>
       </Row>
 
@@ -529,7 +756,7 @@ export default function TableSessionPage() {
         open={itemNotesModal.visible}
         onOk={() => {
           if (itemNotesModal.item) {
-            // Update notes functionality would go here
+            updateNotes(itemNotesModal.item.product.id, notesInput);
           }
           setItemNotesModal({ visible: false });
         }}
@@ -538,9 +765,241 @@ export default function TableSessionPage() {
         <Input.TextArea
           value={notesInput}
           onChange={(e) => setNotesInput(e.target.value)}
-          placeholder="Añadir notas especiales..."
+          placeholder="Añadir notas especiales (sin cebolla, poco hecho, etc.)..."
           rows={4}
         />
+      </Modal>
+
+      {/* Full Payment Modal */}
+      <Modal
+        title="Cobrar Cuenta Completa"
+        open={paymentModal}
+        onCancel={() => setPaymentModal(false)}
+        footer={null}
+        width={500}
+      >
+        <Alert
+          message={`Total a cobrar: ${formatCurrency(totalUnbilledAmount)}`}
+          type="info"
+          showIcon
+          style={{ marginBottom: 16 }}
+        />
+        <Form
+          form={paymentForm}
+          layout="vertical"
+          onFinish={(values) => handleProcessPayment(values)}
+        >
+          <Form.Item
+            name="amount"
+            label="Cantidad recibida"
+            rules={[{ required: true, message: 'Ingrese la cantidad' }]}
+          >
+            <InputNumber
+              style={{ width: '100%' }}
+              min={0.01}
+              precision={2}
+              addonAfter="€"
+              size="large"
+            />
+          </Form.Item>
+
+          <Form.Item
+            name="method"
+            label="Método de pago"
+            rules={[{ required: true, message: 'Seleccione el método' }]}
+          >
+            <Select size="large">
+              <Select.Option value="CASH">
+                <Space><WalletOutlined /> Efectivo</Space>
+              </Select.Option>
+              <Select.Option value="CARD">
+                <Space><CreditCardOutlined /> Tarjeta</Space>
+              </Select.Option>
+              <Select.Option value="TRANSFER">
+                <Space><BankOutlined /> Transferencia</Space>
+              </Select.Option>
+              <Select.Option value="VOUCHER">
+                <Space><GiftOutlined /> Vale</Space>
+              </Select.Option>
+            </Select>
+          </Form.Item>
+
+          <Form.Item name="reference" label="Referencia (opcional)">
+            <Input placeholder="Nº tarjeta, referencia transfer..." />
+          </Form.Item>
+
+          <Form.Item noStyle shouldUpdate={(prevValues, curValues) => prevValues.amount !== curValues.amount}>
+            {({ getFieldValue }) => {
+              const amount = getFieldValue('amount') || 0;
+              const change = amount - totalUnbilledAmount;
+              return change > 0 ? (
+                <Alert
+                  message={`Cambio a devolver: ${formatCurrency(change)}`}
+                  type="success"
+                  showIcon
+                  style={{ marginBottom: 16 }}
+                />
+              ) : null;
+            }}
+          </Form.Item>
+
+          <Divider />
+
+          <Form.Item>
+            <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
+              <Button onClick={() => setPaymentModal(false)}>
+                Cancelar
+              </Button>
+              <Button 
+                type="primary" 
+                htmlType="submit"
+                loading={createBillMutation.isPending || paymentMutation.isPending}
+                icon={<DollarOutlined />}
+                size="large"
+              >
+                Cobrar
+              </Button>
+            </Space>
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      {/* Split Payment Modal */}
+      <Modal
+        title="Cobrar por Separado"
+        open={splitPaymentModal}
+        onCancel={() => {
+          setSplitPaymentModal(false);
+          setSelectedItemsForPayment([]);
+        }}
+        footer={null}
+        width={600}
+      >
+        <Alert
+          message="Selecciona los productos que deseas cobrar"
+          type="info"
+          showIcon
+          style={{ marginBottom: 16 }}
+        />
+        
+        <Space style={{ marginBottom: 16 }}>
+          <Button size="small" onClick={selectAllItems}>
+            Seleccionar todos
+          </Button>
+          <Button size="small" onClick={deselectAllItems}>
+            Deseleccionar todos
+          </Button>
+        </Space>
+
+        <List
+          style={{ maxHeight: 300, overflow: 'auto', marginBottom: 16 }}
+          bordered
+          dataSource={allOrderItems}
+          renderItem={(item: OrderItem) => (
+            <List.Item
+              style={{ 
+                cursor: 'pointer',
+                backgroundColor: selectedItemsForPayment.includes(item.id) ? '#e6f7ff' : undefined
+              }}
+              onClick={() => toggleItemSelection(item.id)}
+            >
+              <Row style={{ width: '100%' }} align="middle">
+                <Col>
+                  <Checkbox 
+                    checked={selectedItemsForPayment.includes(item.id)}
+                    onChange={() => toggleItemSelection(item.id)}
+                  />
+                </Col>
+                <Col flex="1" style={{ marginLeft: 12 }}>
+                  <Text>{item.quantity}x {item.product?.name || 'Producto'}</Text>
+                </Col>
+                <Col style={{ minWidth: 80, textAlign: 'right' }}>
+                  <Text strong>{formatCurrency(item.totalPrice)}</Text>
+                </Col>
+              </Row>
+            </List.Item>
+          )}
+        />
+
+        <Divider />
+
+        <Row justify="space-between" align="middle" style={{ marginBottom: 16 }}>
+          <Col>
+            <Text strong style={{ fontSize: 16 }}>
+              Seleccionados: {selectedItemsForPayment.length} productos
+            </Text>
+          </Col>
+          <Col>
+            <Text strong style={{ fontSize: 18, color: '#1890ff' }}>
+              Total: {formatCurrency(selectedItemsTotal)}
+            </Text>
+          </Col>
+        </Row>
+
+        {selectedItemsForPayment.length > 0 && (
+          <Form
+            layout="vertical"
+            onFinish={(values) => handleProcessPayment(values, selectedItemsForPayment)}
+          >
+            <Form.Item
+              name="method"
+              label="Método de pago"
+              rules={[{ required: true, message: 'Seleccione el método' }]}
+              initialValue="CASH"
+            >
+              <Select size="large">
+                <Select.Option value="CASH">
+                  <Space><WalletOutlined /> Efectivo</Space>
+                </Select.Option>
+                <Select.Option value="CARD">
+                  <Space><CreditCardOutlined /> Tarjeta</Space>
+                </Select.Option>
+                <Select.Option value="TRANSFER">
+                  <Space><BankOutlined /> Transferencia</Space>
+                </Select.Option>
+                <Select.Option value="VOUCHER">
+                  <Space><GiftOutlined /> Vale</Space>
+                </Select.Option>
+              </Select>
+            </Form.Item>
+
+            <Form.Item
+              name="amount"
+              label="Cantidad recibida"
+              rules={[{ required: true, message: 'Ingrese la cantidad' }]}
+              initialValue={selectedItemsTotal}
+            >
+              <InputNumber
+                style={{ width: '100%' }}
+                min={0.01}
+                precision={2}
+                addonAfter="€"
+                size="large"
+              />
+            </Form.Item>
+
+            <Form.Item name="reference" label="Referencia (opcional)">
+              <Input placeholder="Nº tarjeta, referencia transfer..." />
+            </Form.Item>
+
+            <Form.Item>
+              <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
+                <Button onClick={() => setSplitPaymentModal(false)}>
+                  Cancelar
+                </Button>
+                <Button 
+                  type="primary" 
+                  htmlType="submit"
+                  loading={createBillMutation.isPending || paymentMutation.isPending}
+                  icon={<DollarOutlined />}
+                  size="large"
+                >
+                  Cobrar Seleccionados ({formatCurrency(selectedItemsTotal)})
+                </Button>
+              </Space>
+            </Form.Item>
+          </Form>
+        )}
       </Modal>
     </div>
   );

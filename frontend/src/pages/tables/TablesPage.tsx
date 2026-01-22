@@ -48,8 +48,6 @@ export default function TablesPage() {
   }>({ table: null });
   const [zoneModalOpen, setZoneModalOpen] = useState(false);
   const [editingZone, setEditingZone] = useState<Zone | null>(null);
-  const [openSessionModal, setOpenSessionModal] = useState(false);
-  const [sessionForm] = Form.useForm();
 
   // Local table positions (for smooth drag)
   const [localTablePositions, setLocalTablePositions] = useState<Record<string, { x: number; y: number }>>({});
@@ -186,21 +184,18 @@ export default function TablesPage() {
     },
   });
 
-  // Open table session
+  // Open table session - direct open without asking for guests
   const openSessionMutation = useMutation({
-    mutationFn: async (data: { tableId: string; guestCount: number; guestName?: string }) => {
-      const response = await api.post(`/tables/${data.tableId}/open`, {
-        guestCount: data.guestCount,
-        guestName: data.guestName,
+    mutationFn: async (tableId: string) => {
+      const response = await api.post(`/tables/${tableId}/open`, {
+        guestCount: 1, // Default to 1 guest
       });
       return response.data;
     },
-    onSuccess: (_, variables) => {
+    onSuccess: (_, tableId) => {
       message.success('Mesa abierta correctamente');
       queryClient.invalidateQueries({ queryKey: ['zones'] });
-      setOpenSessionModal(false);
-      sessionForm.resetFields();
-      navigate(`/tables/${variables.tableId}`);
+      navigate(`/tables/${tableId}`);
     },
     onError: () => {
       message.error('Error al abrir la mesa');
@@ -266,9 +261,8 @@ export default function TablesPage() {
   }, [tableModalData.table, updateTableMutation, createTableMutation]);
 
   const handleOpenSession = useCallback((table: Table) => {
-    setSelectedTable(table);
-    setOpenSessionModal(true);
-  }, []);
+    openSessionMutation.mutate(table.id);
+  }, [openSessionMutation]);
 
   const handleViewSession = useCallback((table: Table) => {
     navigate(`/tables/${table.id}`);
@@ -297,16 +291,6 @@ export default function TablesPage() {
       createZoneMutation.mutate(data);
     }
   }, [editingZone, updateZoneMutation, createZoneMutation]);
-
-  const handleOpenSessionSubmit = useCallback((values: { guestCount: number; guestName?: string }) => {
-    if (selectedTable) {
-      openSessionMutation.mutate({
-        tableId: selectedTable.id,
-        guestCount: values.guestCount,
-        guestName: values.guestName,
-      });
-    }
-  }, [selectedTable, openSessionMutation]);
 
   const isAdmin = user?.role === 'ADMIN' || user?.role === 'MANAGER';
 
@@ -555,56 +539,6 @@ export default function TablesPage() {
         loading={createZoneMutation.isPending || updateZoneMutation.isPending}
       />
 
-      {/* Open Session Modal */}
-      <Modal
-        title={`Abrir Mesa ${selectedTable?.number}`}
-        open={openSessionModal}
-        onCancel={() => {
-          setOpenSessionModal(false);
-          sessionForm.resetFields();
-        }}
-        footer={null}
-      >
-        <Form
-          form={sessionForm}
-          layout="vertical"
-          onFinish={handleOpenSessionSubmit}
-          initialValues={{ guestCount: 2 }}
-        >
-          <Form.Item
-            name="guestCount"
-            label="Número de comensales"
-            rules={[{ required: true, message: 'Ingrese el número de comensales' }]}
-          >
-            <InputNumber
-              min={1}
-              max={selectedTable?.capacity || 20}
-              style={{ width: '100%' }}
-              size="large"
-            />
-          </Form.Item>
-          <Form.Item
-            name="guestName"
-            label="Nombre del cliente (opcional)"
-          >
-            <Input placeholder="Nombre o referencia" size="large" />
-          </Form.Item>
-          <Form.Item>
-            <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
-              <Button onClick={() => setOpenSessionModal(false)}>
-                Cancelar
-              </Button>
-              <Button 
-                type="primary" 
-                htmlType="submit"
-                loading={openSessionMutation.isPending}
-              >
-                Abrir Mesa
-              </Button>
-            </Space>
-          </Form.Item>
-        </Form>
-      </Modal>
     </div>
   );
 }

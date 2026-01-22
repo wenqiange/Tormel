@@ -7,7 +7,6 @@ import {
   DashboardOutlined,
   TableOutlined,
   ShoppingCartOutlined,
-  FireOutlined,
   AppstoreOutlined,
   DollarOutlined,
   UserOutlined,
@@ -42,11 +41,7 @@ export default function MainLayout() {
       icon: <ShoppingCartOutlined />,
       label: 'Pedidos',
     },
-    {
-      key: '/kitchen',
-      icon: <FireOutlined />,
-      label: 'Cocina',
-    },
+
     {
       key: '/products',
       icon: <AppstoreOutlined />,

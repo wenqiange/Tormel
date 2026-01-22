@@ -13,7 +13,7 @@ import DashboardPage from '@/pages/dashboard/DashboardPage';
 import TablesPage from '@/pages/tables/TablesPage';
 import TableSessionPage from '@/pages/tables/TableSessionPage';
 import OrdersPage from '@/pages/orders/OrdersPage';
-import KitchenPage from '@/pages/kitchen/KitchenPage';
+// KitchenPage removido
 import ProductsPage from '@/pages/products/ProductsPage';
 import BillingPage from '@/pages/billing/BillingPage';
 import UsersPage from '@/pages/admin/UsersPage';
@@ -62,7 +62,7 @@ function App() {
           <Route path="/tables" element={<TablesPage />} />
           <Route path="/tables/:tableId" element={<TableSessionPage />} />
           <Route path="/orders" element={<OrdersPage />} />
-          <Route path="/kitchen" element={<KitchenPage />} />
+          {/* Kitchen route removida */}
           <Route path="/products" element={<ProductsPage />} />
           <Route path="/billing" element={<BillingPage />} />
           
