@@ -1,0 +1,199 @@
+/* ============================================================================
+   Login View — Acceso directo táctil sin PIN
+   ============================================================================ */
+
+.login-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  width: 100vw;
+  background:
+    radial-gradient(ellipse at 20% 50%, rgba(99, 102, 241, 0.08) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 20%, rgba(139, 92, 246, 0.06) 0%, transparent 50%),
+    var(--color-bg-primary);
+  overflow-y: auto;
+  padding: var(--space-6);
+}
+
+.login-card {
+  width: 100%;
+  max-width: 600px;
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-surface-border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-xl);
+  padding: var(--space-8) var(--space-6);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+/* ── Cabecera ── */
+.login-header {
+  text-align: center;
+}
+
+.login-logo {
+  width: 56px;
+  height: 56px;
+  margin: 0 auto var(--space-4);
+  background: linear-gradient(135deg, var(--color-accent), #8b5cf6);
+  border-radius: var(--radius-lg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow:
+    0 8px 24px rgba(99, 102, 241, 0.25),
+    0 0 0 1px rgba(99, 102, 241, 0.15);
+}
+
+.login-logo-icon {
+  font-size: 24px;
+  color: white;
+}
+
+.login-title {
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+  letter-spacing: -0.02em;
+}
+
+.login-subtitle {
+  font-size: var(--font-size-base);
+  color: var(--color-text-secondary);
+  margin-top: var(--space-1);
+}
+
+/* ── Formulario Setup Inicial ── */
+.setup-form {
+  width: 100%;
+  max-width: 380px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.form-label {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+}
+
+.setup-form .input-lg {
+  text-align: center;
+  font-size: var(--font-size-md);
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-bg-tertiary);
+}
+
+.login-submit {
+  width: 100%;
+}
+
+/* ── Error ── */
+.login-error {
+  font-size: var(--font-size-sm);
+  color: var(--color-danger);
+  text-align: center;
+  padding: var(--space-2) var(--space-4);
+  background: var(--color-danger-subtle);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-radius: var(--radius-md);
+  width: 100%;
+  animation: slideUp var(--transition-fast) ease-out;
+}
+
+/* ── Acceso Directo (Usuarios Grid) ── */
+.direct-access-container {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.login-loading {
+  text-align: center;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-base);
+  padding: var(--space-4);
+}
+
+.users-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: var(--space-4);
+  width: 100%;
+}
+
+.user-direct-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-5) var(--space-3);
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--color-surface-border);
+  border-radius: var(--radius-lg);
+  transition: all var(--transition-fast);
+  color: var(--color-text-primary);
+  aspect-ratio: 0.95;
+  cursor: pointer;
+}
+
+.user-direct-card:hover {
+  background: var(--color-bg-elevated);
+  border-color: var(--color-accent);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.user-direct-card:active {
+  transform: translateY(0);
+  background: var(--color-accent-subtle);
+}
+
+.user-avatar {
+  width: 48px;
+  height: 48px;
+  background: linear-gradient(135deg, var(--color-bg-active) 0%, var(--color-bg-hover) 100%);
+  border: 2px solid var(--color-surface-border);
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-accent-text);
+  margin-bottom: var(--space-3);
+  transition: all var(--transition-fast);
+}
+
+.user-direct-card:hover .user-avatar {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 10px rgba(99, 102, 241, 0.2);
+}
+
+.user-name {
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-medium);
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
+  margin-bottom: 2px;
+}
+
+.user-role-badge {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-tertiary);
+}

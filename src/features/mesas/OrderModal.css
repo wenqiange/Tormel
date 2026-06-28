@@ -1,0 +1,445 @@
+/* ============================================================================
+   Tormel POS — Estilos del Panel del Pedido (Order Modal & Catalog)
+   ============================================================================ */
+
+.order-modal-loading {
+  color: var(--color-text-primary);
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  animation: pulse 1.5s infinite;
+}
+
+.order-modal-container {
+  width: 95vw;
+  max-width: 1400px;
+  height: 90vh;
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-surface-border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-xl);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ── Cabecera del Modal ── */
+.order-modal-header {
+  padding: var(--space-4) var(--space-6);
+  border-bottom: 1px solid var(--color-surface-border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--color-bg-secondary);
+  flex-shrink: 0;
+}
+
+.order-header-left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.order-header-icon {
+  font-size: var(--font-size-3xl);
+  background: var(--color-bg-tertiary);
+  padding: var(--space-2);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+}
+
+.order-header-left h2 {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+}
+
+.order-header-status {
+  font-size: var(--font-size-xs);
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: var(--radius-full);
+  font-weight: var(--font-weight-bold);
+  font-size: 11px;
+}
+
+.status-libre {
+  background: var(--color-bg-tertiary);
+  color: var(--color-text-secondary);
+  border: 1px solid #4b5563;
+}
+
+.status-ocupada {
+  background: rgba(34, 197, 94, 0.15);
+  color: var(--color-success);
+  border: 1px solid var(--color-success);
+}
+
+.status-por-cobrar {
+  background: rgba(245, 158, 11, 0.15);
+  color: var(--color-warning);
+  border: 1px solid var(--color-warning);
+}
+
+.btn-close-modal {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--color-surface-border);
+  color: var(--color-text-secondary);
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+}
+
+.btn-close-modal:hover {
+  background: var(--color-bg-hover);
+  color: var(--color-text-primary);
+  transform: rotate(90deg);
+}
+
+/* ── Cuerpo del Modal ── */
+.order-modal-body {
+  flex: 1;
+  display: flex;
+  overflow: hidden; /* Evita scrolls raros a nivel de modal */
+}
+
+/* ============================================================================
+   SECCIÓN IZQUIERDA: Catálogo de Productos
+   ============================================================================ */
+.catalog-section {
+  width: 58%;
+  border-right: 1px solid var(--color-surface-border);
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-4) var(--space-5);
+  gap: var(--space-4);
+  background: var(--color-bg-primary);
+  overflow: hidden;
+}
+
+/* Buscador */
+.catalog-search-bar {
+  position: relative;
+  width: 100%;
+}
+
+.btn-clear-search {
+  position: absolute;
+  right: var(--space-3);
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--color-text-secondary);
+  font-size: 14px;
+}
+
+.btn-clear-search:hover {
+  color: var(--color-text-primary);
+}
+
+/* Pestañas de Categorías (Familias) */
+.catalog-families-nav {
+  display: flex;
+  gap: var(--space-2);
+  overflow-x: auto;
+  padding-bottom: var(--space-2);
+  flex-shrink: 0;
+}
+
+.catalog-families-nav::-webkit-scrollbar {
+  height: 4px;
+}
+
+.family-nav-btn {
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-secondary);
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-surface-border);
+  border-bottom: 3px solid transparent;
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+}
+
+.family-nav-btn:hover {
+  color: var(--color-text-primary);
+  background: var(--color-bg-tertiary);
+}
+
+.family-nav-btn.active {
+  color: white;
+  background: var(--color-bg-tertiary);
+}
+
+/* Rejilla del Catálogo */
+.catalog-grid {
+  flex: 1;
+  overflow-y: auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: var(--space-3);
+  align-content: start;
+  padding-right: var(--space-1);
+}
+
+/* Tarjetas de Producto */
+.product-card {
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-surface-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 90px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.product-card:hover {
+  background: var(--color-bg-hover);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.product-card:active {
+  transform: translateY(0);
+}
+
+.product-card-info {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  justify-content: space-between;
+}
+
+.product-card-name {
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  line-height: 1.3;
+  margin-bottom: var(--space-2);
+}
+
+.product-card-price {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-accent-text);
+}
+
+.catalog-empty {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: var(--space-10);
+  color: var(--color-text-tertiary);
+  font-style: italic;
+}
+
+/* ============================================================================
+   SECCIÓN DERECHA: Lista del Pedido Actual
+   ============================================================================ */
+.order-section {
+  width: 42%;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-bg-secondary);
+  overflow: hidden;
+}
+
+.order-list-header {
+  padding: var(--space-4) var(--space-6);
+  border-bottom: 1px solid var(--color-surface-border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.order-list-header h3 {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+}
+
+.order-items-count {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  background: var(--color-bg-tertiary);
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-sm);
+}
+
+/* Lista de consumos */
+.order-items-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-4) var(--space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.order-item-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--color-surface-border);
+  border-radius: var(--radius-md);
+  transition: all var(--transition-fast);
+}
+
+.order-item-row:hover {
+  border-color: var(--color-text-tertiary);
+  background: var(--color-bg-hover);
+}
+
+.order-item-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+  padding-right: var(--space-3);
+}
+
+.order-item-name {
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.order-item-price-unit {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-tertiary);
+}
+
+.order-item-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.btn-item-qty {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-surface-border);
+  color: var(--color-text-primary);
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+}
+
+.btn-item-qty:hover {
+  background: var(--color-accent);
+  color: white;
+  border-color: var(--color-accent);
+}
+
+.order-item-qty {
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-bold);
+  min-width: 24px;
+  text-align: center;
+  color: var(--color-text-primary);
+}
+
+.order-item-total {
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+  min-width: 65px;
+  text-align: right;
+  margin-left: var(--space-2);
+}
+
+.btn-item-delete {
+  background: transparent;
+  font-size: 16px;
+  margin-left: var(--space-2);
+  transition: opacity var(--transition-fast);
+  opacity: 0.6;
+}
+
+.btn-item-delete:hover {
+  opacity: 1;
+  transform: scale(1.1);
+}
+
+.order-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: var(--space-3);
+  color: var(--color-text-tertiary);
+  text-align: center;
+  padding: 0 var(--space-8);
+}
+
+.order-empty-icon {
+  font-size: 48px;
+  opacity: 0.3;
+}
+
+/* ── Resumen de totales del pedido ── */
+.order-summary-section {
+  padding: var(--space-5) var(--space-6);
+  border-top: 1px solid var(--color-surface-border);
+  background: var(--color-bg-tertiary);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+
+.summary-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.summary-row.summary-total {
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-extrabold);
+  color: white;
+  border-top: 1px solid var(--color-surface-border);
+  padding-top: var(--space-3);
+  margin-top: var(--space-1);
+}
+
+.order-actions {
+  display: flex;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+
+.btn-ticket {
+  flex: 1;
+  font-weight: var(--font-weight-semibold);
+}
+
+.btn-pay {
+  flex: 1.3;
+  font-weight: var(--font-weight-bold);
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+}

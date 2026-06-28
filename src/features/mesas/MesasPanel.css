@@ -1,0 +1,338 @@
+/* ============================================================================
+   Tormel POS — Estilos del Plano de Mesas (Floorplan Layout)
+   ============================================================================ */
+
+.mesas-panel-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  gap: var(--space-4);
+  animation: fadeIn var(--transition-normal) ease-out;
+}
+
+/* ── Controles de Administración ── */
+.mesas-admin-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: rgba(255, 165, 0, 0.1);
+  border: 1px solid rgba(255, 165, 0, 0.3);
+  padding: 1rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+}
+
+.switch-edit-mode {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  color: var(--color-accent);
+}
+
+.switch-edit-mode input[type="checkbox"] {
+  width: 1.25rem;
+  height: 1.25rem;
+  accent-color: var(--color-accent);
+}
+
+.admin-actions {
+  display: flex;
+  gap: 1rem;
+}
+
+.admin-actions button {
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+}
+
+.floorplan-canvas.edit-mode {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 15px rgba(255, 165, 0, 0.2) inset;
+}
+
+/* ── Pestañas de Zonas ── */
+.zonas-tabs {
+  display: flex;
+  gap: var(--space-2);
+  border-bottom: 1px solid var(--color-surface-border);
+  padding-bottom: var(--space-3);
+  flex-shrink: 0;
+}
+
+.zona-tab-btn {
+  padding: var(--space-2) var(--space-5);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-secondary);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-surface-border);
+  transition: all var(--transition-fast);
+}
+
+.zona-tab-btn:hover {
+  color: var(--color-text-primary);
+  background: var(--color-bg-tertiary);
+  border-color: var(--color-text-tertiary);
+}
+
+.zona-tab-btn.active {
+  color: white;
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  box-shadow: var(--shadow-glow);
+}
+
+/* ── Banner de Error y Cargando ── */
+.mesas-loading, .mesas-error-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-8);
+  border-radius: var(--radius-lg);
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-medium);
+}
+
+.mesas-loading {
+  color: var(--color-text-secondary);
+  background: var(--color-bg-secondary);
+  animation: pulse 1.8s infinite ease-in-out;
+}
+
+.mesas-error-banner {
+  color: var(--color-danger);
+  background: var(--color-danger-subtle);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+/* ── Lienzo del Plano de Distribución ── */
+.floorplan-canvas {
+  flex: 1;
+  position: relative;
+  background-color: var(--color-bg-secondary);
+  border: 1px solid var(--color-surface-border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-inner);
+  overflow: auto;
+  min-height: 520px;
+  max-height: calc(100vh - 240px);
+  user-select: none;
+}
+
+/* Rejilla de Fondo */
+.floorplan-grid-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-size: 20px 20px;
+  background-image: 
+    radial-gradient(circle, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+}
+
+.canvas-placeholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-tertiary);
+  font-size: var(--font-size-md);
+  font-style: italic;
+}
+
+/* ── Items Mesa ── */
+.mesa-item {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  padding: var(--space-2);
+  border-width: 2px;
+  border-style: solid;
+  cursor: grab;
+  user-select: none;
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+  color: var(--color-text-primary);
+  font-weight: var(--font-weight-bold);
+  box-shadow: var(--shadow-sm);
+}
+
+.mesa-item:active {
+  cursor: grabbing;
+}
+
+.mesa-item:hover {
+  transform: scale(1.04);
+  z-index: 10;
+}
+
+/* Formas */
+.mesa-item.circular {
+  border-radius: 50%;
+}
+
+.mesa-item.rectangular {
+  border-radius: var(--radius-lg);
+}
+
+/* Estado: Dragging */
+.mesa-item.dragging {
+  opacity: 0.85;
+  transform: scale(1.08);
+  box-shadow: var(--shadow-xl);
+  z-index: 100;
+  cursor: grabbing;
+  border-style: dashed !important;
+}
+
+/* ── Estilos de Estado de Mesas (Exigencias del TPV) ── */
+
+/* 1. Gris: Mesa Libre (Sin consumos) */
+.mesa-libre {
+  background-color: var(--color-bg-tertiary);
+  border-color: #4b5563; /* Gris medio */
+  color: var(--color-text-secondary);
+}
+
+.mesa-libre:hover {
+  border-color: var(--color-text-secondary);
+  background-color: var(--color-bg-hover);
+}
+
+/* 2. Verde: Mesa Ocupada (Consumos pendientes) */
+.mesa-ocupada {
+  background-color: #064e3b; /* Verde oscuro */
+  border-color: var(--color-success); /* Verde brillante */
+  color: var(--color-text-primary);
+  box-shadow: 0 0 12px rgba(34, 197, 94, 0.25);
+  animation: pulse-success-glow 3s infinite ease-in-out;
+}
+
+.mesa-ocupada:hover {
+  background-color: #047857;
+  box-shadow: 0 0 16px rgba(34, 197, 94, 0.4);
+}
+
+/* 3. Naranja: Ticket impreso/por cobrar */
+.mesa-por-cobrar {
+  background-color: #78350f; /* Naranja oscuro */
+  border-color: var(--color-warning); /* Naranja brillante */
+  color: var(--color-text-primary);
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.25);
+  animation: pulse-warning-glow 2s infinite ease-in-out;
+}
+
+.mesa-por-cobrar:hover {
+  background-color: #92400e;
+  box-shadow: 0 0 16px rgba(245, 158, 11, 0.4);
+}
+
+/* ── Componentes Internos de la Mesa ── */
+.mesa-badge-capacidad {
+  font-size: 10px;
+  font-weight: var(--font-weight-medium);
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+.mesa-nombre {
+  font-size: var(--font-size-base);
+  text-align: center;
+  pointer-events: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 90%;
+}
+
+.mesa-indicador-punto {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--color-success);
+  margin-top: 2px;
+  pointer-events: none;
+}
+
+.mesa-indicador-ticket {
+  font-size: 12px;
+  margin-top: 2px;
+  pointer-events: none;
+  animation: bounce 1.5s infinite ease-in-out;
+}
+
+/* ── Leyenda de Colores ── */
+.mesas-leyenda {
+  display: flex;
+  gap: var(--space-6);
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-surface-border);
+  padding: var(--space-3) var(--space-5);
+  border-radius: var(--radius-lg);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  align-self: flex-start;
+  flex-shrink: 0;
+}
+
+.leyenda-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-text-secondary);
+}
+
+.leyenda-color {
+  width: 14px;
+  height: 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.color-gris {
+  background-color: var(--color-bg-tertiary);
+  border-color: #4b5563;
+}
+
+.color-verde {
+  background-color: #064e3b;
+  border-color: var(--color-success);
+}
+
+.color-naranja {
+  background-color: #78350f;
+  border-color: var(--color-warning);
+}
+
+/* ── Animaciones Locales ── */
+@keyframes pulse-success-glow {
+  0%, 100% {
+    box-shadow: 0 0 10px rgba(34, 197, 94, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 18px rgba(34, 197, 94, 0.45);
+  }
+}
+
+@keyframes pulse-warning-glow {
+  0%, 100% {
+    box-shadow: 0 0 10px rgba(245, 158, 11, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 18px rgba(245, 158, 11, 0.5);
+  }
+}
+
+@keyframes bounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-2px);
+  }
+}

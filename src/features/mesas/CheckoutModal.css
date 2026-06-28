@@ -1,0 +1,295 @@
+/* ============================================================================
+   Tormel POS — Estilos del Modal de Cobro (Checkout Modal)
+   ============================================================================ */
+
+.checkout-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 11, 15, 0.75);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: calc(var(--z-modal) + 10);
+  animation: fadeIn var(--transition-fast) ease-out;
+}
+
+.checkout-card {
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-surface-border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-xl);
+  width: 100%;
+  max-width: 460px;
+  max-height: 95vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Cabecera */
+.checkout-header {
+  padding: var(--space-4) var(--space-6);
+  border-bottom: 1px solid var(--color-surface-border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.checkout-header h3 {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+}
+
+.btn-close-checkout {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--color-surface-border);
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+}
+
+.btn-close-checkout:hover {
+  background: var(--color-bg-hover);
+  color: var(--color-text-primary);
+}
+
+/* Cuerpo */
+.checkout-body {
+  padding: var(--space-6);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+/* Banner de total */
+.checkout-total-banner {
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-surface-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  text-align: center;
+}
+
+.total-label {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-secondary);
+  letter-spacing: 0.1em;
+}
+
+.total-amount {
+  font-size: var(--font-size-3xl);
+  font-weight: var(--font-weight-extrabold);
+  color: var(--color-accent-text);
+}
+
+/* Métodos de pago */
+.payment-methods-selector {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-2);
+}
+
+.method-btn {
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--color-surface-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-3) var(--space-2);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-secondary);
+  transition: all var(--transition-fast);
+}
+
+.method-btn:hover {
+  background: var(--color-bg-hover);
+  color: var(--color-text-primary);
+  border-color: var(--color-text-tertiary);
+}
+
+.method-btn.active {
+  background: rgba(99, 102, 241, 0.12);
+  border-color: var(--color-accent);
+  color: white;
+  box-shadow: 0 0 10px rgba(99, 102, 241, 0.15);
+}
+
+.method-icon {
+  font-size: var(--font-size-xl);
+}
+
+/* Sección Efectivo */
+.cash-billing-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  animation: fadeIn var(--transition-fast) ease-out;
+}
+
+.quick-amounts {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-2);
+}
+
+.btn-quick-cash {
+  padding: var(--space-2) 0;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+}
+
+/* Pantalla del importe recibido y cambio */
+.cash-summary-display {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2);
+}
+
+.cash-input-field, .cash-change-field {
+  padding: var(--space-3);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-surface-border);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.display-label {
+  font-size: 10px;
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.display-value {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+}
+
+.cash-change-field.has-change {
+  background: var(--color-success-subtle);
+  border-color: var(--color-success);
+}
+
+.cash-change-field.has-change .display-value {
+  color: var(--color-success);
+}
+
+/* Numpad */
+.numpad {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.numpad-key {
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--color-surface-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text-primary);
+  transition: all var(--transition-fast);
+}
+
+.numpad-key:hover {
+  background: var(--color-bg-hover);
+  border-color: var(--color-text-secondary);
+}
+
+.numpad-key:active {
+  background: var(--color-bg-active);
+  transform: scale(0.96);
+}
+
+.numpad-key-delete {
+  color: var(--color-danger);
+}
+
+.numpad-key-clear {
+  grid-column: 1 / -1;
+  height: 40px;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  background: var(--color-bg-tertiary);
+  border-color: var(--color-surface-border);
+}
+
+.numpad-key-clear:hover {
+  background: var(--color-danger-subtle);
+  color: var(--color-danger);
+  border-color: var(--color-danger);
+}
+
+/* Sección Tarjeta / Datáfono */
+.non-cash-info-section {
+  padding: var(--space-8) var(--space-4);
+  text-align: center;
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-surface-border);
+  border-radius: var(--radius-lg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.payment-ready-icon {
+  font-size: 40px;
+  animation: pulse 1.5s infinite;
+}
+
+.non-cash-info-section p {
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+}
+
+.non-cash-info-section .subtext {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  font-weight: var(--font-weight-normal);
+}
+
+/* Footer del checkout */
+.checkout-footer {
+  padding: var(--space-4) var(--space-6);
+  border-top: 1px solid var(--color-surface-border);
+  background: var(--color-bg-secondary);
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  flex-shrink: 0;
+}
+
+.btn-confirm-pay {
+  font-weight: var(--font-weight-bold);
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+}

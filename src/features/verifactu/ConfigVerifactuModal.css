@@ -1,0 +1,86 @@
+.verifactu-modal-container {
+  background-color: var(--color-surface);
+  color: var(--color-text);
+  border: 1px solid var(--color-surface-border);
+  border-radius: 12px;
+  width: 500px;
+  max-width: 90vw;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+  display: flex;
+  flex-direction: column;
+}
+
+.verifactu-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem;
+  border-bottom: 1px solid var(--color-surface-border);
+}
+
+.verifactu-header h2 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--color-primary);
+}
+
+.verifactu-body {
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.verifactu-description {
+  font-size: 0.9rem;
+  color: var(--color-text-secondary);
+  line-height: 1.4;
+  margin: 0;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.form-group label {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+}
+
+.entorno-toggle {
+  display: flex;
+  gap: 1.5rem;
+  background: var(--color-bg);
+  padding: 1rem;
+  border-radius: 8px;
+  border: 1px solid var(--color-surface-border);
+}
+
+.entorno-toggle label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  color: var(--color-text);
+}
+
+.file-input {
+  background: var(--color-bg);
+  padding: 0.75rem;
+  border-radius: 8px;
+  border: 1px dashed var(--color-primary);
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.verifactu-footer {
+  padding: 1.5rem;
+  border-top: 1px solid var(--color-surface-border);
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+}
