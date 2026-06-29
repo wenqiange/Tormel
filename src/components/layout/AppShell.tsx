@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { LayoutDashboard, ShoppingCart, Users, Grid3X3, PackageOpen, Receipt, Landmark, DollarSign, User } from "lucide-react";
+import { LayoutDashboard, ShoppingCart, Users, Grid3X3, PackageOpen, Receipt, Landmark, DollarSign, User, FileText } from "lucide-react";
 import { logout } from "../../stores/authStore";
 import type { Rol } from "../../lib/api";
 import { MesasPanel } from "../../features/mesas/MesasPanel";
@@ -8,6 +8,8 @@ import { TicketsPanel } from "../../features/tickets/TicketsPanel";
 import { CajaPanel } from "../../features/caja/CajaPanel";
 import { ProductosPanel } from "../../features/productos/ProductosPanel";
 import { VerifactuPanel } from "../../features/verifactu/VerifactuPanel";
+import { ClientesPanel } from "../../features/clientes/ClientesPanel";
+import { FacturasPanel } from "../../features/facturas/FacturasPanel";
 import "./AppShell.css";
 
 interface AppShellProps {
@@ -27,6 +29,7 @@ const navItems: NavItem[] = [
   { id: "mesas", icon: <Grid3X3 size={20} />, label: "Mesas" },
   { id: "ventas", icon: <ShoppingCart size={20} />, label: "Ventas" },
   { id: "tickets", icon: <Receipt size={20} />, label: "Tickets" },
+  { id: "facturas", icon: <FileText size={20} />, label: "Facturas" },
   { id: "productos", icon: <PackageOpen size={20} />, label: "Productos", minRol: ["admin", "encargado"] },
   { id: "caja", icon: <DollarSign size={20} />, label: "Caja", minRol: ["admin", "encargado"] },
   { id: "clientes", icon: <User size={20} />, label: "Clientes", minRol: ["admin", "encargado"] },
@@ -51,10 +54,14 @@ export function AppShell({ nombre, rol }: AppShellProps) {
         return <VentasPanel />;
       case "tickets":
         return <TicketsPanel />;
+      case "facturas":
+        return <FacturasPanel />;
       case "caja":
         return <CajaPanel />;
       case "productos":
         return <ProductosPanel />;
+      case "clientes":
+        return <ClientesPanel />;
       case "verifactu":
         return <VerifactuPanel />;
       default:

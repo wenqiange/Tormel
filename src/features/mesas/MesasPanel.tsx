@@ -1,10 +1,10 @@
 import React, { useEffect, useState, useRef } from "react";
+import { User } from "lucide-react";
 import { api, type Mesa, type Zona } from "../../lib/api";
 import { OrderModal } from "./OrderModal";
 import { MesaConfigModal } from "./MesaConfigModal";
 import { useAuth } from "../../stores/authStore";
 import { useDialog } from "../../context/DialogContext";
-import { User, ReceiptText } from "lucide-react";
 import "./MesasPanel.css";
 
 interface MesasPanelProps {

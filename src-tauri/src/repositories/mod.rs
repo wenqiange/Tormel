@@ -5,3 +5,4 @@ pub mod producto_repo;
 pub mod venta_repo;
 pub mod caja_repo;
 pub mod ticket_repo;
+pub mod cliente_repo;

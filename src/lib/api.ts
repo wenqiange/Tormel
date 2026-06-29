@@ -275,6 +275,45 @@ export interface NuevoMovimientoDTO {
   concepto: string;
 }
 
+export interface Cliente {
+  id: number;
+  nombre: string;
+  nif_cif: string | null;
+  direccion: string | null;
+  codigo_postal: string | null;
+  ciudad: string | null;
+  provincia: string | null;
+  telefono: string | null;
+  email: string | null;
+  notas: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface NuevoCliente {
+  nombre: string;
+  nif_cif?: string | null;
+  direccion?: string | null;
+  codigo_postal?: string | null;
+  ciudad?: string | null;
+  provincia?: string | null;
+  telefono?: string | null;
+  email?: string | null;
+  notas?: string | null;
+}
+
+export interface ActualizarCliente {
+  nombre?: string;
+  nif_cif?: string | null;
+  direccion?: string | null;
+  codigo_postal?: string | null;
+  ciudad?: string | null;
+  provincia?: string | null;
+  telefono?: string | null;
+  email?: string | null;
+  notas?: string | null;
+}
+
 // ============================================================================
 // API — Funciones tipadas sobre invoke()
 // ============================================================================
@@ -377,4 +416,22 @@ export const api = {
     
   obtenerResumenCierre: (turnoId: number) =>
     invoke<ResumenCierre>("obtener_resumen_cierre", { turnoId }),
+
+  // --- Clientes ---
+  listarClientes: () => invoke<Cliente[]>("listar_clientes"),
+  
+  obtenerCliente: (id: number) => invoke<Cliente>("obtener_cliente", { id }),
+  
+  crearCliente: (nuevo: NuevoCliente) => invoke<Cliente>("crear_cliente", { nuevo }),
+  
+  actualizarCliente: (id: number, actualizar: ActualizarCliente) => invoke<Cliente>("actualizar_cliente", { id, actualizar }),
+  
+  eliminarCliente: (id: number) => invoke<void>("eliminar_cliente", { id }),
+
+  // --- Email ---
+  enviarFacturaEmail: (toEmail: string, subject: string, body: string, pdfBytes: number[], filename: string) => 
+    invoke<void>("enviar_factura_email", { toEmail, subject, body, pdfBytes, filename }),
+
+  guardarConfigSmtp: (server: string, port: number, username: string, password: string) =>
+    invoke<void>("guardar_config_smtp", { server, port, username, password }),
 };

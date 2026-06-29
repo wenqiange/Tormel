@@ -103,9 +103,20 @@ pub fn run() {
             commands::productos::crear_familia,
             commands::productos::eliminar_familia,
 
+            // Clientes
+            commands::clientes::listar_clientes,
+            commands::clientes::obtener_cliente,
+            commands::clientes::crear_cliente,
+            commands::clientes::actualizar_cliente,
+            commands::clientes::eliminar_cliente,
+
             // Sistema de Archivos
             commands::fs_commands::guardar_imagen_b64,
             commands::fs_commands::obtener_imagen_b64,
+
+            // Email
+            commands::email::enviar_factura_email,
+            commands::email::guardar_config_smtp,
         ])
         .run(tauri::generate_context!())
         .expect("Error al ejecutar Tormel POS");
