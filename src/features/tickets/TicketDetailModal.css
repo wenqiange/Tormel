@@ -1,0 +1,214 @@
+/* ============================================================================
+   Tormel POS — Detalle de Ticket (recibo)
+   ============================================================================ */
+
+.ticket-detail-card {
+  width: 420px;
+  max-width: 95vw;
+  max-height: 92vh;
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-surface-border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-xl);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.ticket-detail-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-4) var(--space-6);
+  border-bottom: 1px solid var(--color-surface-border);
+  flex-shrink: 0;
+}
+
+.ticket-detail-header h3 {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+}
+
+/* ── Recibo (papel) ── */
+.ticket-receipt {
+  margin: var(--space-5);
+  padding: var(--space-6);
+  background: #ffffff;
+  color: #1a1a1a;
+  border-radius: var(--radius-md);
+  font-family: 'Courier New', monospace;
+  overflow-y: auto;
+}
+
+.receipt-business {
+  text-align: center;
+  margin-bottom: var(--space-4);
+}
+
+.receipt-business h2 {
+  font-size: 1.3rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.receipt-business p {
+  font-size: 0.7rem;
+  color: #555;
+  margin-top: 2px;
+}
+
+.receipt-meta {
+  font-size: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.receipt-meta-row {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.receipt-meta-row span:first-child {
+  color: #777;
+}
+
+.receipt-divider {
+  border-top: 1px dashed #999;
+  margin: var(--space-3) 0;
+}
+
+.receipt-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.78rem;
+}
+
+.receipt-line {
+  display: grid;
+  grid-template-columns: 32px 1fr auto;
+  gap: var(--space-2);
+  align-items: baseline;
+}
+
+.receipt-line-head {
+  font-weight: 700;
+  border-bottom: 1px solid #ddd;
+  padding-bottom: 4px;
+  text-transform: uppercase;
+  font-size: 0.68rem;
+}
+
+.rl-qty {
+  text-align: center;
+}
+
+.rl-name {
+  display: flex;
+  flex-direction: column;
+}
+
+.rl-name small {
+  color: #888;
+  font-size: 0.65rem;
+}
+
+.rl-total {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.receipt-empty {
+  display: block;
+  text-align: center;
+  color: #999;
+  font-style: italic;
+}
+
+.receipt-totals {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 0.8rem;
+}
+
+.receipt-total-row {
+  display: flex;
+  justify-content: space-between;
+}
+
+.receipt-total-grand {
+  font-size: 1.05rem;
+  font-weight: 800;
+  border-top: 1px solid #333;
+  margin-top: 4px;
+  padding-top: 6px;
+}
+
+.receipt-qr {
+  margin-top: var(--space-5);
+  text-align: center;
+}
+
+.receipt-qr-box {
+  display: inline-block;
+  background: #fff;
+  padding: 8px;
+  border: 1px solid #eee;
+  border-radius: 6px;
+}
+
+.receipt-qr p {
+  font-size: 0.62rem;
+  color: #666;
+  margin-top: 6px;
+}
+
+.receipt-qr-brand {
+  font-weight: 800 !important;
+  letter-spacing: 0.1em;
+  color: #1a1a1a !important;
+}
+
+.receipt-warning {
+  margin-top: var(--space-4);
+  text-align: center;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #b45309;
+  text-transform: uppercase;
+}
+
+.ticket-detail-footer {
+  display: flex;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-6);
+  border-top: 1px solid var(--color-surface-border);
+  flex-shrink: 0;
+}
+
+.ticket-detail-footer .btn {
+  flex: 1;
+}
+
+/* ── Impresión: solo el recibo ── */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #ticket-receipt-print,
+  #ticket-receipt-print * {
+    visibility: visible;
+  }
+  #ticket-receipt-print {
+    position: absolute;
+    top: 0;
+    left: 0;
+    margin: 0;
+    width: 80mm;
+    box-shadow: none;
+  }
+}

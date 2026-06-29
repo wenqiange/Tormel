@@ -2,10 +2,11 @@ use rusqlite::{params, Connection, OptionalExtension};
 use std::str::FromStr;
 
 use crate::error::{AppError, AppResult};
-use crate::models::venta::{Venta, LineaVenta, Pago, VentaCompleta, NuevoPago};
+use crate::models::venta::{Venta, LineaVenta, Pago, VentaCompleta};
 use crate::models::common::{EstadoMesa, EstadoVenta, TipoVenta, MetodoPago};
 use crate::repositories::mesa_repo::MesaRepo;
 use crate::repositories::producto_repo::ProductoRepo;
+use crate::repositories::ticket_repo::TicketRepo;
 use crate::services::verifactu::huella::{calcular_huella, generar_url_qr};
 
 /// Repositorio de ventas y pedidos — acceso a datos en SQLite.
@@ -124,28 +125,26 @@ impl VentaRepo {
         venta_id: i64,
         producto_id: i64,
         cantidad_delta: f64,
+        precio_personalizado: Option<f64>,
     ) -> AppResult<()> {
         let producto = ProductoRepo::obtener_por_id(conn, producto_id)?;
 
         // Verificar si la línea ya existe para este producto en esta venta
-        let linea_opt: Option<(i64, f64)> = conn.query_row(
-            "SELECT id, cantidad FROM linea_venta WHERE venta_id = ?1 AND producto_id = ?2",
+        let linea_opt: Option<(i64, f64, f64)> = conn.query_row(
+            "SELECT id, cantidad, producto_precio FROM linea_venta WHERE venta_id = ?1 AND producto_id = ?2",
             params![venta_id, producto_id],
-            |row| Ok((row.get(0)?, row.get(1)?))
+            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?))
         ).optional()?;
 
-        if let Some((linea_id, cantidad_actual)) = linea_opt {
+        if let Some((linea_id, cantidad_actual, precio_base_existente)) = linea_opt {
             let nueva_cantidad = cantidad_actual + cantidad_delta;
             if nueva_cantidad <= 0.0 {
                 // Eliminar línea si la cantidad llega a cero o menos
                 conn.execute("DELETE FROM linea_venta WHERE id = ?1", params![linea_id])?;
             } else {
-                // Actualizar cantidad e importes
-                let pvp = producto.precio;
+                // Actualizar cantidad e importes usando el precio que ya tenía
                 let tipo_iva = producto.tipo_iva;
-                let precio_base = pvp / (1.0 + tipo_iva / 100.0);
-                
-                let subtotal = precio_base * nueva_cantidad;
+                let subtotal = precio_base_existente * nueva_cantidad;
                 let importe_iva = subtotal * (tipo_iva / 100.0);
                 let total = subtotal + importe_iva;
 
@@ -158,7 +157,7 @@ impl VentaRepo {
             }
         } else if cantidad_delta > 0.0 {
             // Crear nueva línea
-            let pvp = producto.precio;
+            let pvp = precio_personalizado.unwrap_or(producto.precio);
             let tipo_iva = producto.tipo_iva;
             let precio_base = pvp / (1.0 + tipo_iva / 100.0);
             
@@ -205,9 +204,14 @@ impl VentaRepo {
 
         let producto = ProductoRepo::obtener_por_id(conn, producto_id)?;
 
-        let pvp = producto.precio;
+        // Rescatar el precio base que tiene la línea actualmente, para no pisarlo
+        let precio_base: f64 = conn.query_row(
+            "SELECT producto_precio FROM linea_venta WHERE venta_id = ?1 AND producto_id = ?2",
+            params![venta_id, producto_id],
+            |row| row.get(0)
+        ).unwrap_or_else(|_| producto.precio / (1.0 + producto.tipo_iva / 100.0));
+        
         let tipo_iva = producto.tipo_iva;
-        let precio_base = pvp / (1.0 + tipo_iva / 100.0);
         
         let subtotal = precio_base * cantidad;
         let importe_iva = subtotal * (tipo_iva / 100.0);
@@ -221,12 +225,47 @@ impl VentaRepo {
         )?;
 
         if rows == 0 {
-            // Si no existía, la creamos
-            return Self::agregar_o_actualizar_linea(conn, venta_id, producto_id, cantidad);
+            // Si no existía, la creamos (sin custom price)
+            return Self::agregar_o_actualizar_linea(conn, venta_id, producto_id, cantidad, None);
         }
 
         Self::actualizar_totales(conn, venta_id)?;
         Self::actualizar_estado_mesa_por_venta(conn, venta_id)?;
+        Ok(())
+    }
+
+    /// Actualiza el precio de una línea de producto específica en una venta activa.
+    pub fn actualizar_precio_linea(
+        conn: &Connection,
+        venta_id: i64,
+        producto_id: i64,
+        nuevo_pvp: f64,
+    ) -> AppResult<()> {
+        let producto = ProductoRepo::obtener_por_id(conn, producto_id)?;
+        
+        let cantidad: f64 = conn.query_row(
+            "SELECT cantidad FROM linea_venta WHERE venta_id = ?1 AND producto_id = ?2",
+            params![venta_id, producto_id],
+            |row| row.get(0)
+        )?;
+
+        let tipo_iva = producto.tipo_iva;
+        let precio_base = nuevo_pvp / (1.0 + tipo_iva / 100.0);
+        
+        let subtotal = precio_base * cantidad;
+        let importe_iva = subtotal * (tipo_iva / 100.0);
+        let total = subtotal + importe_iva;
+
+        let rows = conn.execute(
+            "UPDATE linea_venta 
+             SET producto_precio = ?1, subtotal = ?2, importe_iva = ?3, total = ?4 
+             WHERE venta_id = ?5 AND producto_id = ?6",
+            params![precio_base, subtotal, importe_iva, total, venta_id, producto_id],
+        )?;
+
+        if rows > 0 {
+            Self::actualizar_totales(conn, venta_id)?;
+        }
         Ok(())
     }
 
@@ -242,13 +281,15 @@ impl VentaRepo {
         Ok(())
     }
 
-    /// Cambia el estado de la mesa a 'por_cobrar' (Generar Ticket / Naranja).
+    /// Cambia el estado de la mesa a 'por_cobrar' (Generar Ticket / Naranja)
+    /// y guarda una instantánea del ticket (pre-cuenta) en el historial.
     pub fn imprimir_ticket(conn: &Connection, mesa_id: i64) -> AppResult<()> {
-        let venta_activa = Self::obtener_activa_por_mesa(conn, mesa_id)?;
-        if venta_activa.is_none() {
-            return Err(AppError::Validation("No hay consumos activos en esta mesa para generar ticket".into()));
-        }
-        
+        let venta_activa = Self::obtener_activa_por_mesa(conn, mesa_id)?
+            .ok_or_else(|| AppError::Validation("No hay consumos activos en esta mesa para generar ticket".into()))?;
+
+        // Guardar el ticket de pre-cuenta en el historial local.
+        TicketRepo::registrar_desde_venta(conn, &venta_activa, "pre_cuenta", None, None, None)?;
+
         MesaRepo::actualizar_estado(conn, mesa_id, &EstadoMesa::PorCobrar)?;
         Ok(())
     }
@@ -358,7 +399,17 @@ impl VentaRepo {
         );
         conn.execute(&query_turno, params![total_venta, venta_completa.venta.turno_id])?;
 
-        // 5. Restablecer mesa a libre
+        // 5. Guardar el ticket fiscal definitivo en el historial local
+        TicketRepo::registrar_desde_venta(
+            conn,
+            &venta_completa,
+            "fiscal",
+            Some(numero_factura.as_str()),
+            Some(metodo_pago),
+            Some(qr_data.as_str()),
+        )?;
+
+        // 6. Restablecer mesa a libre
         MesaRepo::actualizar_estado(conn, mesa_id, &EstadoMesa::Libre)?;
 
         Ok(qr_data)

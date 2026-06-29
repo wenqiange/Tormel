@@ -136,3 +136,66 @@ impl UsuarioService {
         )
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rusqlite::Connection;
+
+    fn setup_db() -> Connection {
+        let conn = Connection::open_in_memory().unwrap();
+        // Crear tablas necesarias mínimas para el test de usuarios
+        conn.execute_batch(
+            "CREATE TABLE usuario (id INTEGER PRIMARY KEY, nombre TEXT, pin_hash TEXT, rol TEXT, activo INTEGER DEFAULT 1, created_at TEXT DEFAULT CURRENT_TIMESTAMP, updated_at TEXT DEFAULT CURRENT_TIMESTAMP);
+             CREATE TABLE evento_sistema (id INTEGER PRIMARY KEY, usuario_id INTEGER, tipo TEXT, entidad TEXT, entidad_id INTEGER, detalle TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP);"
+        ).unwrap();
+        conn
+    }
+
+    #[test]
+    fn test_crear_admin_inicial() {
+        let conn = setup_db();
+        let admin = UsuarioService::crear_admin_inicial(&conn, "Admin").unwrap();
+        
+        assert_eq!(admin.nombre, "Admin");
+        assert_eq!(admin.rol, Rol::Admin);
+        
+        // No debe permitir crear otro si ya existe
+        let result = UsuarioService::crear_admin_inicial(&conn, "Admin 2");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_login_exitoso() {
+        let conn = setup_db();
+        let user = UsuarioService::crear(&conn, NuevoUsuario { nombre: "Juan".to_string(), rol: Rol::Camarero }).unwrap();
+        
+        let sesion = UsuarioService::login(&conn, user.id).unwrap();
+        assert_eq!(sesion.nombre, "Juan");
+        assert_eq!(sesion.rol, Rol::Camarero);
+    }
+    
+    #[test]
+    fn test_actualizar_y_desactivar() {
+        let conn = setup_db();
+        let user1 = UsuarioService::crear_admin_inicial(&conn, "Admin").unwrap();
+        
+        // Crear segundo admin
+        let user2 = UsuarioService::crear(&conn, NuevoUsuario { nombre: "Segundo".to_string(), rol: Rol::Admin }).unwrap();
+        
+        // Desactivar segundo admin debe funcionar
+        let act2 = ActualizarUsuario { nombre: None, rol: None, activo: Some(false) };
+        let user2_actualizado = UsuarioService::actualizar(&conn, user2.id, act2).unwrap();
+        assert_eq!(user2_actualizado.activo, false);
+        
+        // Intentar hacer login de inactivo falla
+        let login_res = UsuarioService::login(&conn, user2.id);
+        assert!(login_res.is_err());
+        
+        // Desactivar el último admin debe fallar
+        let act1 = ActualizarUsuario { nombre: None, rol: None, activo: Some(false) };
+        let user1_res = UsuarioService::actualizar(&conn, user1.id, act1);
+        assert!(user1_res.is_err());
+    }
+}
+

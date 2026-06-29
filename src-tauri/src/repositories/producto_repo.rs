@@ -27,6 +27,46 @@ impl ProductoRepo {
         Ok(familias)
     }
 
+    /// Obtiene una familia por su ID.
+    pub fn obtener_familia_por_id(conn: &Connection, id: i64) -> AppResult<Familia> {
+        conn.query_row(
+            "SELECT id, nombre, familia_padre_id, orden, color, icono, activa, created_at
+             FROM familia WHERE id = ?1",
+            [id],
+            |row| {
+                Ok(Familia {
+                    id: row.get(0)?,
+                    nombre: row.get(1)?,
+                    familia_padre_id: row.get(2)?,
+                    orden: row.get(3)?,
+                    color: row.get(4)?,
+                    icono: row.get(5)?,
+                    activa: row.get::<_, i32>(6)? != 0,
+                    created_at: row.get(7)?,
+                })
+            }
+        ).map_err(|_| AppError::NoEncontrado(format!("Familia con ID {} no existe", id)))
+    }
+
+    /// Crea una nueva familia.
+    pub fn crear_familia(conn: &Connection, nombre: &str, color: &str) -> AppResult<Familia> {
+        conn.execute(
+            "INSERT INTO familia (nombre, color, orden) VALUES (?1, ?2, 0)",
+            rusqlite::params![nombre, color],
+        )?;
+        let id = conn.last_insert_rowid();
+        Self::obtener_familia_por_id(conn, id)
+    }
+
+    /// Elimina lógicamente una familia (activa = 0).
+    pub fn eliminar_familia(conn: &Connection, id: i64) -> AppResult<()> {
+        let eliminados = conn.execute("UPDATE familia SET activa = 0 WHERE id = ?1", [id])?;
+        if eliminados == 0 {
+            return Err(AppError::NoEncontrado(format!("Familia {} no existe", id)));
+        }
+        Ok(())
+    }
+
     /// Obtiene todos los productos activos.
     pub fn listar_productos(conn: &Connection) -> AppResult<Vec<Producto>> {
         let mut stmt = conn.prepare(

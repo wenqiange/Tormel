@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { api, type Mesa, type Producto, type Familia, type VentaCompleta } from "../../lib/api";
 import { CheckoutModal } from "./CheckoutModal";
+import { useDialog } from "../../context/DialogContext";
+import { X, Utensils, Receipt, Banknote, Trash2, Coffee, Minus, Plus, Edit2 } from "lucide-react";
 import "./OrderModal.css";
 
 interface OrderModalProps {
@@ -20,6 +22,7 @@ export function OrderModal({ mesa, usuarioId, onClose }: OrderModalProps) {
   const [showCheckout, setShowCheckout] = useState(false);
   const [loading, setLoading] = useState(true);
   const [mesaEstado, setMesaEstado] = useState(mesa.estado);
+  const { showAlert, showPrompt } = useDialog();
 
   useEffect(() => {
     const cargarCatalogoyVenta = async () => {
@@ -59,8 +62,26 @@ export function OrderModal({ mesa, usuarioId, onClose }: OrderModalProps) {
 
   const handleAgregarProducto = async (productoId: number) => {
     try {
+      const prod = productos.find(p => p.id === productoId);
+      let precioPersonalizado = undefined;
+      
+      if (prod && prod.precio === 0) {
+        const precioInput = await showPrompt({
+          title: "Precio Personalizado",
+          message: `Introduce el precio para ${prod.nombre} (€):`,
+          placeholder: "Ej: 15.50"
+        });
+        if (precioInput === null) return; // Cancelado
+        const parsed = parseFloat(precioInput.replace(',', '.'));
+        if (isNaN(parsed) || parsed < 0) {
+          await showAlert({ title: "Error", message: "Precio inválido.", type: "danger" });
+          return;
+        }
+        precioPersonalizado = parsed;
+      }
+
       // Agregar 1 unidad
-      const ventaActualizada = await api.agregarProductoMesa(mesa.id, usuarioId, productoId, 1);
+      const ventaActualizada = await api.agregarProductoMesa(mesa.id, usuarioId, productoId, 1, precioPersonalizado);
       setVentaActiva(ventaActualizada);
       
       // Si la mesa estaba libre (Gris), ahora pasará a ocupada (Verde) en el backend.
@@ -70,7 +91,7 @@ export function OrderModal({ mesa, usuarioId, onClose }: OrderModalProps) {
       }
     } catch (err) {
       console.error("Error al añadir producto:", err);
-      alert("No se pudo añadir el producto al pedido.");
+      await showAlert({ title: "Error", message: "No se pudo añadir el producto al pedido.", type: "danger" });
     }
   };
 
@@ -86,6 +107,31 @@ export function OrderModal({ mesa, usuarioId, onClose }: OrderModalProps) {
       }
     } catch (err) {
       console.error("Error al modificar cantidad de producto:", err);
+    }
+  };
+
+  const handleCambiarPrecioLinea = async (productoId: number, nombreProducto: string) => {
+    const precioInput = await showPrompt({
+      title: "Modificar Precio",
+      message: `Introduce el nuevo precio para ${nombreProducto} (€):`,
+      placeholder: "Ej: 15.50"
+    });
+    if (precioInput === null) return;
+    
+    const parsed = parseFloat(precioInput.replace(',', '.'));
+    if (isNaN(parsed) || parsed < 0) {
+      await showAlert({ title: "Error", message: "Precio inválido.", type: "danger" });
+      return;
+    }
+
+    try {
+      const ventaActualizada = await api.actualizarPrecioProductoMesa(mesa.id, usuarioId, productoId, parsed);
+      if (ventaActualizada) {
+        setVentaActiva(ventaActualizada);
+      }
+    } catch (err) {
+      console.error("Error al cambiar precio:", err);
+      await showAlert({ title: "Error", message: "No se pudo cambiar el precio.", type: "danger" });
     }
   };
 
@@ -105,16 +151,16 @@ export function OrderModal({ mesa, usuarioId, onClose }: OrderModalProps) {
   // Generar / Imprimir Ticket
   const handleGenerarTicket = async () => {
     if (!ventaActiva || ventaActiva.lineas.length === 0) {
-      alert("No se puede generar un ticket de un pedido vacío.");
+      await showAlert("No se puede generar un ticket de un pedido vacío.");
       return;
     }
     try {
       await api.imprimirTicketMesa(mesa.id);
       setMesaEstado("por_cobrar");
-      alert(`🧾 Ticket generado correctamente para ${mesa.nombre}.`);
+      await showAlert(`Ticket generado correctamente para ${mesa.nombre}.`);
     } catch (err) {
       console.error("Error al imprimir ticket:", err);
-      alert("Error al generar el ticket.");
+      await showAlert({ title: "Error", message: "Error al generar el ticket.", type: "danger" });
     }
   };
 
@@ -137,7 +183,7 @@ export function OrderModal({ mesa, usuarioId, onClose }: OrderModalProps) {
         {/* Cabecera del pedido */}
         <header className="order-modal-header">
           <div className="order-header-left">
-            <span className="order-header-icon">🍽️</span>
+            <span className="order-header-icon"><Utensils size={24} /></span>
             <div>
               <h2>Pedido — {mesa.nombre}</h2>
               <span className="order-header-status">
@@ -154,7 +200,7 @@ export function OrderModal({ mesa, usuarioId, onClose }: OrderModalProps) {
             </div>
           </div>
           <button className="btn-close-modal" onClick={onClose} title="Cerrar y guardar cambios">
-            ✕
+            <X size={24} />
           </button>
         </header>
 
@@ -170,7 +216,7 @@ export function OrderModal({ mesa, usuarioId, onClose }: OrderModalProps) {
                 onChange={(e) => setBusqueda(e.target.value)}
               />
               {busqueda && (
-                <button className="btn-clear-search" onClick={() => setBusqueda("")}>✕</button>
+                <button className="btn-clear-search" onClick={() => setBusqueda("")}><X size={16} /></button>
               )}
             </div>
 
@@ -238,7 +284,17 @@ export function OrderModal({ mesa, usuarioId, onClose }: OrderModalProps) {
                 <div key={linea.id} className="order-item-row animate-fadeIn">
                   <div className="order-item-detail">
                     <span className="order-item-name">{linea.producto_nombre}</span>
-                    <span className="order-item-price-unit">{linea.total / linea.cantidad} €/u</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <span className="order-item-price-unit">{linea.total / linea.cantidad} €/u</span>
+                      <button 
+                        className="btn-item-qty" 
+                        style={{ padding: '2px', background: 'transparent', color: 'var(--color-text-secondary)', border: 'none' }}
+                        onClick={() => handleCambiarPrecioLinea(linea.producto_id, linea.producto_nombre)}
+                        title="Modificar Precio"
+                      >
+                        <Edit2 size={12} />
+                      </button>
+                    </div>
                   </div>
 
                   <div className="order-item-controls">
@@ -246,14 +302,14 @@ export function OrderModal({ mesa, usuarioId, onClose }: OrderModalProps) {
                       className="btn-item-qty"
                       onClick={() => handleCambiarCantidad(linea.producto_id, linea.cantidad, -1)}
                     >
-                      －
+                      <Minus size={16} />
                     </button>
                     <span className="order-item-qty">{linea.cantidad}</span>
                     <button
                       className="btn-item-qty"
                       onClick={() => handleAgregarProducto(linea.producto_id)}
                     >
-                      ＋
+                      <Plus size={16} />
                     </button>
                     
                     <span className="order-item-total">{(linea.total).toFixed(2)} €</span>
@@ -263,7 +319,7 @@ export function OrderModal({ mesa, usuarioId, onClose }: OrderModalProps) {
                       title="Eliminar producto"
                       onClick={() => handleEliminarProducto(linea.producto_id)}
                     >
-                      🗑️
+                      <Trash2 size={18} />
                     </button>
                   </div>
                 </div>
@@ -271,7 +327,7 @@ export function OrderModal({ mesa, usuarioId, onClose }: OrderModalProps) {
 
               {lineas.length === 0 && (
                 <div className="order-empty-state">
-                  <span className="order-empty-icon">☕</span>
+                  <span className="order-empty-icon"><Coffee size={48} /></span>
                   <p>Mesa vacía. Añade productos desde el catálogo para abrir la cuenta.</p>
                 </div>
               )}
@@ -298,7 +354,7 @@ export function OrderModal({ mesa, usuarioId, onClose }: OrderModalProps) {
                   onClick={handleGenerarTicket}
                   disabled={lineas.length === 0}
                 >
-                  🧾 Generar Ticket
+                  <Receipt size={20} style={{marginRight: 8, verticalAlign: 'middle'}}/> Generar Ticket
                 </button>
                 
                 <button
@@ -306,7 +362,7 @@ export function OrderModal({ mesa, usuarioId, onClose }: OrderModalProps) {
                   onClick={() => setShowCheckout(true)}
                   disabled={lineas.length === 0}
                 >
-                  💵 Cobrar Cuenta
+                  <Banknote size={20} style={{marginRight: 8, verticalAlign: 'middle'}}/> Cobrar Cuenta
                 </button>
               </div>
             </div>

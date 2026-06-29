@@ -163,6 +163,40 @@ export interface Venta {
   notas: string | null;
   abierta_at: string;
   cerrada_at: string | null;
+  // -- Campos VeriFactu (AEAT) --
+  hash_registro: string | null;
+  hash_anterior: string | null;
+  huella_verifactu: string | null;
+  estado_verifactu: string | null;
+  fecha_hora_huso: string | null;
+  qr_data: string | null;
+  // -----------------------------
+  created_at: string;
+}
+
+export type TipoTicket = "pre_cuenta" | "fiscal";
+
+export interface TicketLinea {
+  producto_nombre: string;
+  cantidad: number;
+  precio_unitario: number;
+  total: number;
+}
+
+export interface Ticket {
+  id: number;
+  venta_id: number | null;
+  tipo: TipoTicket;
+  numero: string | null;
+  mesa_nombre: string | null;
+  usuario_nombre: string | null;
+  metodo_pago: MetodoPago | null;
+  comensales: number;
+  subtotal: number;
+  total_iva: number;
+  total: number;
+  qr_data: string | null;
+  lineas: TicketLinea[];
   created_at: string;
 }
 
@@ -277,11 +311,14 @@ export const api = {
   obtenerVentaActivaMesa: (mesaId: number) =>
     invoke<VentaCompleta | null>("obtener_venta_activa_mesa", { mesaId }),
   
-  agregarProductoMesa: (mesaId: number, usuarioId: number, productoId: number, cantidad: number) =>
-    invoke<VentaCompleta>("agregar_producto_mesa", { mesaId, usuarioId, productoId, cantidad }),
+  agregarProductoMesa: (mesaId: number, usuarioId: number, productoId: number, cantidad: number, precioPersonalizado?: number) =>
+    invoke<VentaCompleta>("agregar_producto_mesa", { mesaId, usuarioId, productoId, cantidad, precioPersonalizado }),
   
   actualizarCantidadProductoMesa: (mesaId: number, usuarioId: number, productoId: number, cantidad: number) =>
     invoke<VentaCompleta | null>("actualizar_cantidad_producto_mesa", { mesaId, usuarioId, productoId, cantidad }),
+  
+  actualizarPrecioProductoMesa: (mesaId: number, usuarioId: number, productoId: number, nuevoPrecio: number) =>
+    invoke<VentaCompleta | null>("actualizar_precio_producto_mesa", { mesaId, usuarioId, productoId, nuevoPrecio }),
   
   eliminarProductoMesa: (mesaId: number, productoId: number) =>
     invoke<VentaCompleta | null>("eliminar_producto_mesa", { mesaId, productoId }),
@@ -311,10 +348,17 @@ export const api = {
   obtenerImagenB64: (nombreArchivo: string) => 
     invoke<string>("obtener_imagen_b64", { nombreArchivo }),
   listarFamilias: () => invoke<Familia[]>("listar_familias"),
+  crearFamilia: (nombre: string, color: string) => invoke<Familia>("crear_familia", { nombre, color }),
+  eliminarFamilia: (id: number) => invoke<void>("eliminar_familia", { id }),
   
   listarProductos: () => invoke<Producto[]>("listar_productos"),
   
   obtenerVentasDiarias: () => invoke<VentaCompleta[]>("obtener_ventas_diarias"),
+
+  // --- Tickets (historial) ---
+  listarTickets: () => invoke<Ticket[]>("listar_tickets"),
+
+  obtenerTicket: (id: number) => invoke<Ticket>("obtener_ticket", { id }),
 
   // --- Caja ---
   obtenerTurnoActivo: () => invoke<TurnoCaja | null>("obtener_turno_activo"),

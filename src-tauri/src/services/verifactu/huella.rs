@@ -78,9 +78,55 @@ pub fn generar_url_qr(
     
     let importe_str = format!("{:.2}", importe_total);
 
-    // Estructura base de la URL según la especificación técnica de la AEAT
+// Estructura base de la URL según la especificación técnica de la AEAT
     format!(
         "https://www2.agenciatributaria.gob.es/wlpl/inwinv/es.aeat.dit.adu.sii.sif.FacturasComprobacion?id={}&num={}&fecha={}&imp={}",
         nif_emisor, num_serie_factura, fecha, importe_str
     )
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_calculo_huella_sin_hash_anterior() {
+        let (huella_str, hash_hex) = calcular_huella(
+            "B12345678",
+            "FAC-001",
+            "2026-06-29T10:00:00+02:00",
+            "F1",
+            21.00,
+            121.00,
+            None
+        );
+        
+        // Huella esperada: B12345678FAC-00129-06-2026F121.00121.00
+        assert_eq!(huella_str, "B12345678FAC-00129-06-2026F121.00121.00");
+        assert_eq!(hash_hex.len(), 64);
+        
+        // Verificar que el hash corresponde a la huella
+        use sha2::{Sha256, Digest};
+        let mut hasher = Sha256::new();
+        hasher.update(huella_str.as_bytes());
+        let expected_hash = format!("{:X}", hasher.finalize());
+        assert_eq!(hash_hex, expected_hash);
+    }
+
+    #[test]
+    fn test_calculo_huella_con_hash_anterior() {
+        let hash_previo = "A1B2C3D4E5F6";
+        let (huella_str, _hash_hex) = calcular_huella(
+            "12345678Z",
+            "TICK-002",
+            "2026-06-29T10:05:00+02:00",
+            "F2",
+            2.10,
+            12.10,
+            Some(hash_previo)
+        );
+        
+        assert_eq!(huella_str, "12345678ZTICK-00229-06-2026F22.1012.10A1B2C3D4E5F6");
+    }
+}
+

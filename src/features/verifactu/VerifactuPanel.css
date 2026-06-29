@@ -1,0 +1,137 @@
+.verifactu-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  gap: var(--space-4);
+}
+
+.verifactu-tabs {
+  display: flex;
+  gap: var(--space-2);
+  border-bottom: 1px solid var(--color-surface-border);
+  padding-bottom: var(--space-2);
+}
+
+.verifactu-tab {
+  padding: var(--space-2) var(--space-4);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-tertiary);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.verifactu-tab.active {
+  background: var(--color-accent-subtle);
+  color: var(--color-accent-text);
+  font-weight: var(--font-weight-bold);
+}
+
+.verifactu-content {
+  flex: 1;
+  overflow: auto;
+}
+
+/* ── Declaración Responsable ── */
+.declaracion-card {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: var(--space-8);
+  border: 1px solid #dce3e9;
+  border-radius: var(--radius-md);
+  background: #ffffff;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+}
+
+.declaracion-header {
+  text-align: center;
+  margin-bottom: var(--space-6);
+  border-bottom: 2px solid var(--color-accent);
+  padding-bottom: var(--space-4);
+}
+
+.declaracion-header h2 {
+  font-size: var(--font-size-2xl);
+  color: var(--color-text-primary);
+  margin-bottom: var(--space-2);
+}
+
+.declaracion-header p {
+  color: var(--color-text-secondary);
+}
+
+.declaracion-body {
+  font-size: var(--font-size-base);
+  line-height: 1.6;
+  color: var(--color-text-primary);
+}
+
+.declaracion-body p {
+  margin-bottom: var(--space-4);
+}
+
+.declaracion-info-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+  background: var(--color-bg-primary);
+  padding: var(--space-4);
+  border-radius: var(--radius-sm);
+  margin-top: var(--space-6);
+  border: 1px dashed var(--color-surface-border);
+}
+
+.info-item {
+  display: flex;
+  flex-direction: column;
+}
+
+.info-item strong {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  margin-bottom: 2px;
+}
+
+/* ── Tabla de Consulta AEAT ── */
+.aeat-table-container {
+  background: #ffffff;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-surface-border);
+  overflow: hidden;
+}
+
+.aeat-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.aeat-table th,
+.aeat-table td {
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-surface-border);
+  font-size: var(--font-size-sm);
+}
+
+.aeat-table th {
+  background: var(--color-bg-tertiary);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.aeat-table tbody tr:hover {
+  background: var(--color-bg-primary);
+}
+
+.hash-cell {
+  font-family: monospace;
+  font-size: 11px;
+  color: var(--color-text-tertiary);
+  word-break: break-all;
+  max-width: 250px;
+}

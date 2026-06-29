@@ -58,6 +58,7 @@ pub fn agregar_producto_mesa(
     usuario_id: i64,
     producto_id: i64,
     cantidad: f64,
+    precio_personalizado: Option<f64>,
     db: State<'_, DbState>,
 ) -> AppResult<VentaCompleta> {
     let conn = db.conn.lock().map_err(|e| {
@@ -71,7 +72,7 @@ pub fn agregar_producto_mesa(
     };
 
     // Agregar el producto a la venta
-    VentaRepo::agregar_o_actualizar_linea(&conn, venta_id, producto_id, cantidad)?;
+    VentaRepo::agregar_o_actualizar_linea(&conn, venta_id, producto_id, cantidad, precio_personalizado)?;
 
     // Devolver la venta completa actualizada
     VentaRepo::obtener_por_id(&conn, venta_id)
@@ -101,6 +102,29 @@ pub fn actualizar_cantidad_producto_mesa(
     };
 
     VentaRepo::actualizar_cantidad_linea(&conn, venta_id, producto_id, cantidad)?;
+    let vc = VentaRepo::obtener_por_id(&conn, venta_id)?;
+    Ok(Some(vc))
+}
+
+/// Cambia el precio de un producto en el pedido actual.
+#[tauri::command]
+pub fn actualizar_precio_producto_mesa(
+    mesa_id: i64,
+    usuario_id: i64,
+    producto_id: i64,
+    nuevo_precio: f64,
+    db: State<'_, DbState>,
+) -> AppResult<Option<VentaCompleta>> {
+    let conn = db.conn.lock().map_err(|e| {
+        AppError::Interno(format!("Error de bloqueo de base de datos: {}", e))
+    })?;
+
+    let venta_id = match VentaRepo::obtener_activa_por_mesa(&conn, mesa_id)? {
+        Some(vc) => vc.venta.id,
+        None => return Ok(None)
+    };
+
+    VentaRepo::actualizar_precio_linea(&conn, venta_id, producto_id, nuevo_precio)?;
     let vc = VentaRepo::obtener_por_id(&conn, venta_id)?;
     Ok(Some(vc))
 }

@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { api, type Mesa, type MetodoPago } from "../../lib/api";
+import { Banknote, CreditCard, Layers, Zap } from "lucide-react";
+import { useDialog } from "../../context/DialogContext";
 import "./CheckoutModal.css";
 
 interface CheckoutModalProps {
@@ -15,6 +17,7 @@ export function CheckoutModal({ mesa, total, onClose, onSuccess }: CheckoutModal
   const [entregadoStr, setEntregadoStr] = useState("");
   const [loading, setLoading] = useState(false);
   const [qrData, setQrData] = useState<string | null>(null);
+  const { showAlert } = useDialog();
 
   const entregadoNum = parseFloat(entregadoStr) || 0;
   const cambio = entregadoNum > total ? entregadoNum - total : 0;
@@ -50,7 +53,7 @@ export function CheckoutModal({ mesa, total, onClose, onSuccess }: CheckoutModal
 
   const handleConfirmarCobro = async () => {
     if (metodo === "efectivo" && entregadoNum < total) {
-      alert("El importe entregado es menor que el total de la cuenta.");
+      await showAlert("El importe entregado es menor que el total de la cuenta.");
       return;
     }
 
@@ -61,7 +64,7 @@ export function CheckoutModal({ mesa, total, onClose, onSuccess }: CheckoutModal
       setQrData(qr_url);
     } catch (err) {
       console.error("Error al cobrar:", err);
-      alert("Error al procesar el cobro: " + err);
+      await showAlert({ title: "Error", message: "Error al procesar el cobro: " + err, type: "danger" });
     } finally {
       setLoading(false);
     }
@@ -120,7 +123,7 @@ export function CheckoutModal({ mesa, total, onClose, onSuccess }: CheckoutModal
               }}
               disabled={loading}
             >
-              <span className="method-icon">💵</span>
+              <span className="method-icon"><Banknote size={24} /></span>
               <span>Efectivo</span>
             </button>
             
@@ -132,7 +135,7 @@ export function CheckoutModal({ mesa, total, onClose, onSuccess }: CheckoutModal
               }}
               disabled={loading}
             >
-              <span className="method-icon">💳</span>
+              <span className="method-icon"><CreditCard size={24} /></span>
               <span>Tarjeta</span>
             </button>
             
@@ -144,7 +147,7 @@ export function CheckoutModal({ mesa, total, onClose, onSuccess }: CheckoutModal
               }}
               disabled={loading}
             >
-              <span className="method-icon">◈</span>
+              <span className="method-icon"><Layers size={24} /></span>
               <span>Otro</span>
             </button>
           </div>
@@ -207,7 +210,7 @@ export function CheckoutModal({ mesa, total, onClose, onSuccess }: CheckoutModal
           {/* Información de Tarjeta u Otros */}
           {metodo !== "efectivo" && (
             <div className="non-cash-info-section animate-fadeIn">
-              <span className="payment-ready-icon">⚡</span>
+              <span className="payment-ready-icon"><Zap size={48} /></span>
               <p>Proceda al cobro mediante la pasarela de pago o datáfono.</p>
               <p className="subtext">El importe a cargar en el terminal es de {total.toFixed(2)} €</p>
             </div>

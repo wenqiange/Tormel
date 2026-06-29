@@ -67,6 +67,7 @@ pub fn run() {
             commands::mesas::obtener_venta_activa_mesa,
             commands::mesas::agregar_producto_mesa,
             commands::mesas::actualizar_cantidad_producto_mesa,
+            commands::mesas::actualizar_precio_producto_mesa,
             commands::mesas::eliminar_producto_mesa,
             commands::mesas::imprimir_ticket_mesa,
             commands::mesas::cobrar_mesa,
@@ -75,6 +76,10 @@ pub fn run() {
             commands::ventas::listar_familias,
             commands::ventas::listar_productos,
             commands::ventas::obtener_ventas_diarias,
+
+            // Tickets (historial)
+            commands::tickets::listar_tickets,
+            commands::tickets::obtener_ticket,
 
             // Mesas Admin
             commands::mesas::crear_zona,
@@ -95,6 +100,8 @@ pub fn run() {
             commands::productos::crear_producto,
             commands::productos::actualizar_producto,
             commands::productos::eliminar_producto,
+            commands::productos::crear_familia,
+            commands::productos::eliminar_familia,
 
             // Sistema de Archivos
             commands::fs_commands::guardar_imagen_b64,

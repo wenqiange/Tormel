@@ -1,10 +1,13 @@
-import { useState } from "react";
+import React, { useState } from "react";
+import { LayoutDashboard, ShoppingCart, Users, Grid3X3, PackageOpen, Receipt, Landmark, DollarSign, User } from "lucide-react";
 import { logout } from "../../stores/authStore";
 import type { Rol } from "../../lib/api";
 import { MesasPanel } from "../../features/mesas/MesasPanel";
 import { VentasPanel } from "../../features/ventas/VentasPanel";
+import { TicketsPanel } from "../../features/tickets/TicketsPanel";
 import { CajaPanel } from "../../features/caja/CajaPanel";
 import { ProductosPanel } from "../../features/productos/ProductosPanel";
+import { VerifactuPanel } from "../../features/verifactu/VerifactuPanel";
 import "./AppShell.css";
 
 interface AppShellProps {
@@ -15,18 +18,20 @@ interface AppShellProps {
 
 interface NavItem {
   id: string;
-  icon: string;
+  icon: React.ReactNode;
   label: string;
   minRol?: Rol[];
 }
 
 const navItems: NavItem[] = [
-  { id: "mesas", icon: "⊞", label: "Mesas" },
-  { id: "ventas", icon: "◎", label: "Ventas" },
-  { id: "productos", icon: "▦", label: "Productos", minRol: ["admin", "encargado"] },
-  { id: "caja", icon: "◈", label: "Caja", minRol: ["admin", "encargado"] },
-  { id: "clientes", icon: "◉", label: "Clientes", minRol: ["admin", "encargado"] },
-  { id: "usuarios", icon: "◍", label: "Usuarios", minRol: ["admin"] },
+  { id: "mesas", icon: <Grid3X3 size={20} />, label: "Mesas" },
+  { id: "ventas", icon: <ShoppingCart size={20} />, label: "Ventas" },
+  { id: "tickets", icon: <Receipt size={20} />, label: "Tickets" },
+  { id: "productos", icon: <PackageOpen size={20} />, label: "Productos", minRol: ["admin", "encargado"] },
+  { id: "caja", icon: <DollarSign size={20} />, label: "Caja", minRol: ["admin", "encargado"] },
+  { id: "clientes", icon: <User size={20} />, label: "Clientes", minRol: ["admin", "encargado"] },
+  { id: "verifactu", icon: <Landmark size={20} />, label: "AEAT", minRol: ["admin", "encargado"] },
+  { id: "usuarios", icon: <Users size={20} />, label: "Usuarios", minRol: ["admin"] },
 ];
 
 export function AppShell({ nombre, rol }: AppShellProps) {
@@ -44,14 +49,18 @@ export function AppShell({ nombre, rol }: AppShellProps) {
         return <MesasPanel usuarioId={1} />; // ID 1 es el Administrador por defecto
       case "ventas":
         return <VentasPanel />;
+      case "tickets":
+        return <TicketsPanel />;
       case "caja":
         return <CajaPanel />;
       case "productos":
         return <ProductosPanel />;
+      case "verifactu":
+        return <VerifactuPanel />;
       default:
         return (
           <div className="placeholder-content">
-            <div className="placeholder-icon">{activeItem?.icon ?? "🍽️"}</div>
+            <div className="placeholder-icon">{activeItem?.icon ?? <LayoutDashboard size={48} />}</div>
             <h2>Sección: {activeItem?.label}</h2>
             <p>Este módulo estará disponible próximamente en Tormel POS.</p>
           </div>
@@ -64,7 +73,7 @@ export function AppShell({ nombre, rol }: AppShellProps) {
       {/* Sidebar */}
       <nav className="app-sidebar">
         <div className="sidebar-logo">
-          <span className="sidebar-logo-icon">◈</span>
+          <span className="sidebar-logo-icon"><LayoutDashboard size={24} /></span>
         </div>
 
         <div className="sidebar-nav">

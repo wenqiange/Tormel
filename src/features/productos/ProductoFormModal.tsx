@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { api, Familia, Producto, NuevoProducto, ActualizarProducto } from "../../lib/api";
+import { Image as ImageIcon, Trash2 } from "lucide-react";
+import { useDialog } from "../../context/DialogContext";
 
 interface ProductoFormModalProps {
   familiaSeleccionada: number | null;
@@ -25,6 +27,7 @@ export function ProductoFormModal({
   const [imagenPath, setImagenPath] = useState(productoAEditar?.imagen_path || "");
   const [previewB64, setPreviewB64] = useState<string | null>(null);
   const [cargando, setCargando] = useState(false);
+  const { showAlert, showConfirm } = useDialog();
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -51,7 +54,7 @@ export function ProductoFormModal({
         setImagenPath(path);
       } catch (err) {
         console.error("Error guardando imagen:", err);
-        alert("Error al guardar la imagen");
+        await showAlert({ title: "Error", message: "Error al guardar la imagen", type: "danger" });
       } finally {
         setCargando(false);
       }
@@ -90,7 +93,7 @@ export function ProductoFormModal({
       onClose();
     } catch (err) {
       console.error(err);
-      alert("Error al guardar producto");
+      await showAlert({ title: "Error", message: "Error al guardar producto", type: "danger" });
     } finally {
       setCargando(false);
     }
@@ -99,9 +102,40 @@ export function ProductoFormModal({
   return (
     <div className="caja-modal-overlay">
       <div className="caja-modal" style={{ maxWidth: '500px' }}>
-        <div className="caja-modal-header">
+        <div className="caja-modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
           <h2>{productoAEditar ? "Editar Producto" : "Nuevo Producto"}</h2>
-          <button className="caja-close-btn" onClick={onClose} disabled={cargando}>×</button>
+          <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+            {productoAEditar && (
+              <button 
+                type="button"
+                onClick={async () => {
+                  const isConfirmed = await showConfirm({
+                    title: "Confirmar eliminación",
+                    message: "¿Seguro que deseas eliminar este producto?",
+                    type: "warning"
+                  });
+                  if (isConfirmed) {
+                    setCargando(true);
+                    try {
+                      await api.eliminarProducto(productoAEditar.id);
+                      onGuardado();
+                      onClose();
+                    } catch (e) {
+                      await showAlert({ title: "Error", message: "Error al eliminar producto", type: "danger" });
+                    } finally {
+                      setCargando(false);
+                    }
+                  }
+                }}
+                className="btn-icon" 
+                title="Eliminar Producto" 
+                style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '4px' }}
+              >
+                <Trash2 size={20} />
+              </button>
+            )}
+            <button className="caja-close-btn" onClick={onClose} disabled={cargando}>×</button>
+          </div>
         </div>
         
         <form onSubmit={handleSubmit} className="caja-modal-body">
@@ -113,7 +147,7 @@ export function ProductoFormModal({
               <img src={previewB64} alt="Previsualización" className="img-upload-preview" />
             ) : (
               <div className="img-upload-text">
-                <i>📷</i>
+                <ImageIcon size={32} color="#888" />
                 <span>Haz clic para añadir una foto</span>
               </div>
             )}

@@ -10,6 +10,8 @@ import { useAuth } from "../../stores/authStore";
 import { MovimientoModal } from "./MovimientoModal";
 import { CierreCajaModal } from "./CierreCajaModal";
 import { ConfigVerifactuModal } from "../verifactu/ConfigVerifactuModal";
+import { CircleDollarSign, Lock, Download, Upload, Settings } from "lucide-react";
+import { useDialog } from "../../context/DialogContext";
 import "./CajaPanel.css";
 
 export function CajaPanel() {
@@ -23,6 +25,7 @@ export function CajaPanel() {
   const [showMovimiento, setShowMovimiento] = useState<"entrada" | "salida" | null>(null);
   const [showCierre, setShowCierre] = useState(false);
   const [showVerifactu, setShowVerifactu] = useState(false);
+  const { showAlert } = useDialog();
 
   // Apertura form
   const [fondoInicial, setFondoInicial] = useState("");
@@ -67,7 +70,7 @@ export function CajaPanel() {
       await cargarDatosCaja();
     } catch (error) {
       console.error("Error al abrir caja:", error);
-      alert(error);
+      await showAlert({ title: "Error", message: String(error), type: "danger" });
     }
   };
 
@@ -98,7 +101,7 @@ export function CajaPanel() {
     return (
       <div className="caja-container caja-cerrada">
         <div className="apertura-card">
-          <div className="apertura-icon">💰</div>
+          <div className="apertura-icon"><CircleDollarSign size={48} /></div>
           <h1>Caja Cerrada</h1>
           <p>Debes abrir un nuevo turno para poder realizar ventas.</p>
           
@@ -138,8 +141,9 @@ export function CajaPanel() {
         <button 
           className="caja-btn-primary btn-salida" 
           onClick={() => setShowCierre(true)}
+          style={{ display: 'flex', alignItems: 'center', gap: 6 }}
         >
-          🔒 Realizar Cierre Z
+          <Lock size={18} /> Realizar Cierre Z
         </button>
       </div>
 
@@ -172,21 +176,23 @@ export function CajaPanel() {
             <button 
               className="caja-btn-primary btn-entrada"
               onClick={() => setShowMovimiento("entrada")}
+              style={{ display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'center' }}
             >
-              📥 Ingreso de Efectivo
+              <Download size={18} /> Ingreso de Efectivo
             </button>
             <button 
               className="caja-btn-primary btn-salida"
               onClick={() => setShowMovimiento("salida")}
+              style={{ display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'center' }}
             >
-              📤 Retirada de Efectivo
+              <Upload size={18} /> Retirada de Efectivo
             </button>
             <button 
               className="caja-btn-primary"
-              style={{ backgroundColor: 'var(--color-accent)', color: 'white', marginTop: '1rem', width: '100%' }}
+              style={{ backgroundColor: 'var(--color-accent)', color: 'white', marginTop: '1rem', width: '100%', display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'center' }}
               onClick={() => setShowVerifactu(true)}
             >
-              ⚙️ Ajustes AEAT (VeriFactu)
+              <Settings size={18} /> Ajustes AEAT (VeriFactu)
             </button>
           </div>
         </div>
@@ -200,7 +206,7 @@ export function CajaPanel() {
               {movimientos.map(m => (
                 <div key={m.id} className="movimiento-item">
                   <div className="mov-icon">
-                    {m.tipo === "entrada" ? "📥" : "📤"}
+                    {m.tipo === "entrada" ? <Download size={20} /> : <Upload size={20} />}
                   </div>
                   <div className="mov-details">
                     <span className="mov-concepto">{m.concepto}</span>

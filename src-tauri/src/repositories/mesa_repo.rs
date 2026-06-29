@@ -186,11 +186,45 @@ mod tests {
     use rusqlite::Connection;
 
     #[test]
-    fn test_listar() {
-        let conn = Connection::open("C:/Users/Usuario/AppData/Roaming/com.tormel.pos/negocio.db").unwrap();
-        let zonas = MesaRepo::listar_zonas(&conn).unwrap();
-        println!("REAL ZONAS: {:?}", zonas);
+    fn test_crear_listar_y_actualizar_mesa() {
+        let conn = Connection::open_in_memory().unwrap();
+        conn.execute_batch(
+            "CREATE TABLE zona (id INTEGER PRIMARY KEY, nombre TEXT, orden INTEGER, activa INTEGER DEFAULT 1, created_at TEXT DEFAULT CURRENT_TIMESTAMP);
+             CREATE TABLE mesa (id INTEGER PRIMARY KEY, zona_id INTEGER, nombre TEXT, capacidad INTEGER, estado TEXT DEFAULT 'libre', pos_x INTEGER, pos_y INTEGER, ancho INTEGER, alto INTEGER, forma TEXT, activa INTEGER DEFAULT 1, created_at TEXT DEFAULT CURRENT_TIMESTAMP, updated_at TEXT DEFAULT CURRENT_TIMESTAMP);",
+        ).unwrap();
+        
+        // 1. Crear Zona
+        let zona = MesaRepo::crear_zona(&conn, &crate::models::mesa::NuevaZona { nombre: "Interior".to_string(), orden: Some(1) }).unwrap();
+        assert_eq!(zona.nombre, "Interior");
+        
+        // 2. Crear Mesa
+        let mesa = MesaRepo::crear_mesa(&conn, &crate::models::mesa::NuevaMesa {
+            zona_id: zona.id,
+            nombre: "M1".to_string(),
+            capacidad: Some(4),
+            forma: Some(crate::models::common::FormaMesa::Rectangular),
+            pos_x: None,
+            pos_y: None,
+            ancho: None,
+            alto: None,
+        }).unwrap();
+        assert_eq!(mesa.nombre, "M1");
+        assert_eq!(mesa.estado, crate::models::common::EstadoMesa::Libre);
+        
+        // 3. Actualizar Estado
+        MesaRepo::actualizar_estado(&conn, mesa.id, &crate::models::common::EstadoMesa::Ocupada).unwrap();
+        let mesa_actualizada = MesaRepo::obtener_por_id(&conn, mesa.id).unwrap();
+        assert_eq!(mesa_actualizada.estado, crate::models::common::EstadoMesa::Ocupada);
+        
+        // 4. Mover Mesa (Drag and Drop)
+        MesaRepo::actualizar_posicion(&conn, mesa.id, 50, 100).unwrap();
+        let mesa_movida = MesaRepo::obtener_por_id(&conn, mesa.id).unwrap();
+        assert_eq!(mesa_movida.pos_x, 50);
+        assert_eq!(mesa_movida.pos_y, 100);
+        
+        // 5. Verificar listado
         let mesas = MesaRepo::listar_mesas(&conn).unwrap();
-        println!("REAL MESAS: {:?}", mesas);
+        assert_eq!(mesas.len(), 1);
     }
 }
+

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api, type VentaCompleta } from "../../lib/api";
+import { CircleDollarSign, Banknote, CreditCard, Receipt, RefreshCw, Layers } from "lucide-react";
 import "./VentasPanel.css";
 
 export function VentasPanel() {
@@ -62,7 +63,7 @@ export function VentasPanel() {
       {/* Tarjetas de Estadísticas Rápidas */}
       <div className="ventas-stats-grid">
         <div className="stat-card total-facturado">
-          <span className="stat-icon">💰</span>
+          <span className="stat-icon"><CircleDollarSign size={24} /></span>
           <div className="stat-content">
             <span className="stat-label">Total Cobrado Hoy</span>
             <h2 className="stat-value">{totalCobrado.toFixed(2)} €</h2>
@@ -70,7 +71,7 @@ export function VentasPanel() {
         </div>
 
         <div className="stat-card stat-cash">
-          <span className="stat-icon">💵</span>
+          <span className="stat-icon"><Banknote size={24} /></span>
           <div className="stat-content">
             <span className="stat-label">Caja (Efectivo)</span>
             <h2 className="stat-value">{totalEfectivo.toFixed(2)} €</h2>
@@ -78,7 +79,7 @@ export function VentasPanel() {
         </div>
 
         <div className="stat-card stat-card-payment">
-          <span className="stat-icon">💳</span>
+          <span className="stat-icon"><CreditCard size={24} /></span>
           <div className="stat-content">
             <span className="stat-label">Tarjeta bancaria</span>
             <h2 className="stat-value">{totalTarjeta.toFixed(2)} €</h2>
@@ -86,7 +87,7 @@ export function VentasPanel() {
         </div>
 
         <div className="stat-card stat-tickets">
-          <span className="stat-icon">🧾</span>
+          <span className="stat-icon"><Receipt size={24} /></span>
           <div className="stat-content">
             <span className="stat-label">Tickets Cobrados</span>
             <h2 className="stat-value">{numTickets} ventas</h2>
@@ -100,8 +101,8 @@ export function VentasPanel() {
       <div className="ventas-list-section">
         <div className="ventas-list-header">
           <h3>Historial de Transacciones (Hoy)</h3>
-          <button className="btn btn-secondary btn-refresh" onClick={cargarVentasDiarias}>
-            🔄 Actualizar
+          <button className="btn btn-secondary btn-refresh" onClick={cargarVentasDiarias} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <RefreshCw size={16} /> Actualizar
           </button>
         </div>
 
@@ -121,7 +122,7 @@ export function VentasPanel() {
               {ventas.map((v) => (
                 <tr key={v.id} className="venta-row">
                   <td className="venta-factura-num">
-                    {v.numero ? `🧾 ${v.numero}` : `Abierta #${v.id}`}
+                    {v.numero ? <><Receipt size={14} style={{verticalAlign: 'middle', marginRight: 4}}/> {v.numero}</> : `Abierta #${v.id}`}
                   </td>
                   <td className="venta-fecha">
                     {formatearFechaHora(v.cerrada_at)}
@@ -143,7 +144,7 @@ export function VentasPanel() {
                   <td className="venta-metodo-pago">
                     {v.pagos.map((p) => (
                       <span key={p.id} className={`pago-method-badge method-${p.metodo}`}>
-                        {p.metodo === "efectivo" ? "💵 Efectivo" : p.metodo === "tarjeta" ? "💳 Tarjeta" : "◈ Otro"}
+                        {p.metodo === "efectivo" ? <><Banknote size={14} style={{verticalAlign: 'middle', marginRight: 4}}/> Efectivo</> : p.metodo === "tarjeta" ? <><CreditCard size={14} style={{verticalAlign: 'middle', marginRight: 4}}/> Tarjeta</> : <><Layers size={14} style={{verticalAlign: 'middle', marginRight: 4}}/> Otro</>}
                       </span>
                     ))}
                     {v.pagos.length === 0 && <span className="pago-method-badge text-muted">Sin pago</span>}

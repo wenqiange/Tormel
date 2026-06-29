@@ -12,47 +12,51 @@
    CSS Custom Properties (Design Tokens)
    ============================================================================ */
 :root {
-  /* ── Colores Base (Tema Oscuro) ── */
-  --color-bg-primary:      #0f1117;
-  --color-bg-secondary:    #1a1d27;
-  --color-bg-tertiary:     #242836;
-  --color-bg-elevated:     #2a2e3d;
-  --color-bg-hover:        #323748;
-  --color-bg-active:       #3b4158;
+  /* ── Colores Base (Tema Claro Profesional) ── */
+  --color-bg-primary:      #f4f7f6; /* Fondo principal gris muy claro */
+  --color-bg-secondary:    #ffffff; /* Paneles blancos */
+  --color-bg-tertiary:     #eaeff2; /* Paneles secundarios (sidebar) */
+  --color-bg-elevated:     #ffffff;
+  --color-bg-hover:        #e0e6ed;
+  --color-bg-active:       #cfd9e3;
 
   /* ── Superficies Glassmorphism ── */
-  --color-surface:         rgba(26, 29, 39, 0.85);
-  --color-surface-border:  rgba(255, 255, 255, 0.06);
-  --color-surface-hover:   rgba(42, 46, 61, 0.9);
+  --color-surface:         rgba(255, 255, 255, 0.95);
+  --color-surface-border:  #dce3e9; /* Bordes sutiles y limpios */
+  --color-surface-hover:   rgba(240, 244, 248, 0.95);
 
   /* ── Texto ── */
-  --color-text-primary:    #f0f1f5;
-  --color-text-secondary:  #9ca3b8;
-  --color-text-tertiary:   #6b7280;
-  --color-text-inverse:    #0f1117;
+  --color-text-primary:    #2d3748; /* Texto principal oscuro */
+  --color-text-secondary:  #4a5568; /* Texto secundario gris oscuro */
+  --color-text-tertiary:   #718096; /* Texto terciario gris medio */
+  --color-text-inverse:    #ffffff; /* Texto invertido blanco */
 
-  /* ── Acento Principal (Indigo/Violeta) ── */
-  --color-accent:          #6366f1;
-  --color-accent-hover:    #818cf8;
-  --color-accent-active:   #4f46e5;
-  --color-accent-subtle:   rgba(99, 102, 241, 0.12);
-  --color-accent-text:     #a5b4fc;
+  /* ── Acento Principal (Verde Corporativo - Inspirado en POS) ── */
+  --color-accent:          #46a049; /* Verde principal */
+  --color-accent-hover:    #3b883e;
+  --color-accent-active:   #2e6a30;
+  --color-accent-subtle:   rgba(70, 160, 73, 0.12);
+  --color-accent-text:     #2e6a30;
+
+  /* ── Acento Secundario (Naranja - Checkout/Acciones) ── */
+  --color-accent-secondary: #f39c12;
+  --color-accent-secondary-hover: #e67e22;
 
   /* ── Colores Semánticos ── */
-  --color-success:         #22c55e;
-  --color-success-subtle:  rgba(34, 197, 94, 0.12);
-  --color-warning:         #f59e0b;
-  --color-warning-subtle:  rgba(245, 158, 11, 0.12);
-  --color-danger:          #ef4444;
-  --color-danger-subtle:   rgba(239, 68, 68, 0.12);
-  --color-info:            #3b82f6;
-  --color-info-subtle:     rgba(59, 130, 246, 0.12);
+  --color-success:         #27ae60;
+  --color-success-subtle:  rgba(39, 174, 96, 0.15);
+  --color-warning:         #f39c12;
+  --color-warning-subtle:  rgba(243, 156, 18, 0.15);
+  --color-danger:          #e74c3c;
+  --color-danger-subtle:   rgba(231, 76, 60, 0.15);
+  --color-info:            #3498db;
+  --color-info-subtle:     rgba(52, 152, 219, 0.15);
 
   /* ── Estados de Mesa ── */
-  --color-mesa-libre:      #22c55e;
-  --color-mesa-ocupada:    #6366f1;
-  --color-mesa-reservada:  #f59e0b;
-  --color-mesa-por-cobrar: #ef4444;
+  --color-mesa-libre:      #27ae60;
+  --color-mesa-ocupada:    #3498db;
+  --color-mesa-reservada:  #f39c12;
+  --color-mesa-por-cobrar: #e74c3c;
 
   /* ── Tipografía ── */
   --font-family:           'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -236,12 +240,13 @@ img {
 
 .app-header {
   height: var(--header-height);
-  background: var(--color-bg-secondary);
-  border-bottom: 1px solid var(--color-surface-border);
+  background: var(--color-accent); /* Header verde para destacar */
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
   display: flex;
   align-items: center;
   padding: 0 var(--space-6);
   flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .app-content {
@@ -261,61 +266,63 @@ img {
   justify-content: center;
   gap: var(--space-2);
   padding: var(--space-2) var(--space-4);
-  font-weight: var(--font-weight-medium);
+  font-weight: var(--font-weight-semibold);
   font-size: var(--font-size-base);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-sm);
   transition: all var(--transition-fast);
   white-space: nowrap;
   position: relative;
   overflow: hidden;
+  border: 1px solid transparent;
+  user-select: none;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
 }
 
-.btn::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: white;
-  opacity: 0;
-  transition: opacity var(--transition-fast);
-}
-
-.btn:active::after {
-  opacity: 0.1;
+.btn:active {
+  transform: translateY(1px);
+  box-shadow: none;
 }
 
 .btn-primary {
   background: var(--color-accent);
-  color: white;
+  color: var(--color-text-inverse);
+  border-color: var(--color-accent-active);
+  text-shadow: 0 1px 1px rgba(0,0,0,0.1);
 }
 
 .btn-primary:hover {
   background: var(--color-accent-hover);
-  box-shadow: var(--shadow-glow);
+  box-shadow: 0 2px 4px rgba(70, 160, 73, 0.25);
 }
 
 .btn-secondary {
-  background: var(--color-bg-tertiary);
-  color: var(--color-text-primary);
-  border: 1px solid var(--color-surface-border);
+  background: var(--color-bg-secondary);
+  color: var(--color-text-secondary);
+  border-color: #cbd5e1;
 }
 
 .btn-secondary:hover {
   background: var(--color-bg-hover);
-  border-color: var(--color-text-tertiary);
+  color: var(--color-text-primary);
+  border-color: #94a3b8;
 }
 
 .btn-danger {
   background: var(--color-danger);
-  color: white;
+  color: var(--color-text-inverse);
+  border-color: #c0392b;
 }
 
 .btn-danger:hover {
-  background: #dc2626;
+  background: #c0392b;
+  box-shadow: 0 2px 4px rgba(231, 76, 60, 0.25);
 }
 
 .btn-ghost {
   background: transparent;
   color: var(--color-text-secondary);
+  box-shadow: none;
+  border-color: transparent;
 }
 
 .btn-ghost:hover {
@@ -326,43 +333,48 @@ img {
 .btn-lg {
   padding: var(--space-3) var(--space-6);
   font-size: var(--font-size-md);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-md);
 }
 
 .btn-xl {
   padding: var(--space-4) var(--space-8);
   font-size: var(--font-size-lg);
-  border-radius: var(--radius-lg);
-  font-weight: var(--font-weight-semibold);
+  border-radius: var(--radius-md);
+  font-weight: var(--font-weight-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .btn-icon {
   padding: var(--space-2);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-sm);
   aspect-ratio: 1;
 }
 
 .btn:disabled {
-  opacity: 0.5;
+  opacity: 0.6;
   cursor: not-allowed;
   pointer-events: none;
+  transform: none;
+  box-shadow: none;
 }
 
 /* ── Inputs ── */
 .input {
   width: 100%;
   padding: var(--space-2) var(--space-3);
-  background: var(--color-bg-primary);
+  background: #ffffff;
   border: 1px solid var(--color-surface-border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-sm);
   color: var(--color-text-primary);
   font-size: var(--font-size-base);
   transition: all var(--transition-fast);
+  box-shadow: inset 0 1px 2px rgba(0,0,0,0.02);
 }
 
 .input:focus {
   border-color: var(--color-accent);
-  box-shadow: 0 0 0 3px var(--color-accent-subtle);
+  box-shadow: 0 0 0 3px var(--color-accent-subtle), inset 0 1px 2px rgba(0,0,0,0.02);
 }
 
 .input::placeholder {
@@ -378,8 +390,9 @@ img {
 .card {
   background: var(--color-bg-secondary);
   border: 1px solid var(--color-surface-border);
-  border-radius: var(--radius-lg);
-  padding: var(--space-5);
+  border-radius: var(--radius-sm);
+  padding: var(--space-4);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
   transition: all var(--transition-fast);
 }
 
@@ -388,14 +401,14 @@ img {
 }
 
 .card-interactive:hover {
-  background: var(--color-bg-tertiary);
-  border-color: var(--color-text-tertiary);
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-md);
+  border-color: var(--color-accent);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
 .card-interactive:active {
   transform: translateY(0);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
 /* ── Badges ── */

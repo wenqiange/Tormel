@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { api, Mesa, NuevaMesa } from "../../lib/api";
+import { useDialog } from "../../context/DialogContext";
 
 interface MesaConfigModalProps {
   zonaId: number;
@@ -13,6 +14,7 @@ export function MesaConfigModal({ zonaId, mesaAEditar, onClose, onGuardado }: Me
   const [capacidad, setCapacidad] = useState(mesaAEditar?.capacidad?.toString() || "4");
   const [forma, setForma] = useState<"rectangular" | "circular">(mesaAEditar?.forma || "rectangular");
   const [cargando, setCargando] = useState(false);
+  const { showAlert, showConfirm } = useDialog();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,7 +41,7 @@ export function MesaConfigModal({ zonaId, mesaAEditar, onClose, onGuardado }: Me
       onClose();
     } catch (err) {
       console.error(err);
-      alert("Error guardando la mesa");
+      await showAlert({ title: "Error", message: "Error guardando la mesa", type: "danger" });
     } finally {
       setCargando(false);
     }
@@ -47,7 +49,12 @@ export function MesaConfigModal({ zonaId, mesaAEditar, onClose, onGuardado }: Me
 
   const handleEliminar = async () => {
     if (!mesaAEditar) return;
-    if (window.confirm(`¿Estás seguro de que deseas eliminar la mesa ${mesaAEditar.nombre}?`)) {
+    const isConfirmed = await showConfirm({
+      title: "Confirmar eliminación",
+      message: `¿Estás seguro de que deseas eliminar la mesa ${mesaAEditar.nombre}?`,
+      type: "warning"
+    });
+    if (isConfirmed) {
       setCargando(true);
       try {
         await api.eliminarMesa(mesaAEditar.id);
@@ -55,7 +62,7 @@ export function MesaConfigModal({ zonaId, mesaAEditar, onClose, onGuardado }: Me
         onClose();
       } catch (err) {
         console.error(err);
-        alert("Error eliminando la mesa");
+        await showAlert({ title: "Error", message: "Error eliminando la mesa", type: "danger" });
         setCargando(false);
       }
     }

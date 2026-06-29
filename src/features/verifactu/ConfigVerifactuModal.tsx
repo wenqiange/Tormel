@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { Settings } from "lucide-react";
+import { useDialog } from "../../context/DialogContext";
 import "./ConfigVerifactuModal.css";
 
 interface ConfigVerifactuModalProps {
@@ -9,12 +11,17 @@ export function ConfigVerifactuModal({ onClose }: ConfigVerifactuModalProps) {
   const [password, setPassword] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [entorno, setEntorno] = useState<"pruebas" | "produccion">("pruebas");
+  const { showAlert } = useDialog();
 
-  const handleSave = () => {
+  const handleSave = async () => {
     // En una implementación completa de Fase 4, aquí leeríamos el archivo
     // como Base64 usando FileReader y lo enviaríamos al backend de Tauri
     // junto con la contraseña para inicializar la identidad reqwest.
-    alert("¡Configuración guardada en modo " + entorno + "!\nEl certificado se ha configurado correctamente.");
+    await showAlert({
+      title: "Configuración Guardada",
+      message: "¡Configuración guardada en modo " + entorno + "!\nEl certificado se ha configurado correctamente.",
+      type: "info"
+    });
     onClose();
   };
 
@@ -22,7 +29,7 @@ export function ConfigVerifactuModal({ onClose }: ConfigVerifactuModalProps) {
     <div className="modal-overlay animate-fadeIn">
       <div className="verifactu-modal-container animate-slideUp">
         <header className="verifactu-header">
-          <h2>⚙️ Ajustes SIF / VeriFactu (AEAT)</h2>
+          <h2 style={{ display: 'flex', alignItems: 'center', gap: 8 }}><Settings size={24} /> Ajustes SIF / VeriFactu (AEAT)</h2>
           <button className="btn-close-modal" onClick={onClose}>✕</button>
         </header>
         

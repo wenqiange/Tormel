@@ -28,6 +28,11 @@ const MIGRATIONS: &[Migration] = &[
         name: "verifactu_schema",
         sql: include_str!("../../migrations/003_verifactu_schema.sql"),
     },
+    Migration {
+        version: "004",
+        name: "tickets_historial",
+        sql: include_str!("../../migrations/004_tickets_historial.sql"),
+    },
 ];
 
 /// Ejecuta todas las migraciones pendientes.

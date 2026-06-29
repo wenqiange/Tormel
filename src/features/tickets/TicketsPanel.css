@@ -1,0 +1,155 @@
+/* ============================================================================
+   Tormel POS — Historial de Tickets
+   ============================================================================ */
+
+.tickets-panel-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  gap: var(--space-6);
+  animation: fadeIn var(--transition-normal) ease-out;
+}
+
+.tickets-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-8);
+  border-radius: var(--radius-lg);
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+  background: var(--color-bg-secondary);
+  animation: pulse 1.8s infinite ease-in-out;
+}
+
+.tickets-error-banner {
+  color: var(--color-danger);
+  background: var(--color-danger-subtle);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  padding: var(--space-4) var(--space-6);
+  border-radius: var(--radius-lg);
+}
+
+.tickets-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--space-4);
+  flex-shrink: 0;
+}
+
+/* ── Toolbar ── */
+.tickets-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+
+.tickets-filters {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.filter-chip {
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-full);
+  border: 1px solid var(--color-surface-border);
+  background: var(--color-bg-secondary);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.filter-chip:hover {
+  background: var(--color-bg-hover);
+  color: var(--color-text-primary);
+}
+
+.filter-chip.active {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: white;
+}
+
+.tickets-search {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex: 1;
+  max-width: 480px;
+  min-width: 260px;
+}
+
+.tickets-search .input {
+  flex: 1;
+}
+
+/* ── Listado ── */
+.tickets-list-section {
+  flex: 1;
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-surface-border);
+  border-radius: var(--radius-xl);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+  min-height: 320px;
+}
+
+.tickets-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: var(--font-size-base);
+}
+
+.tickets-table th {
+  background: var(--color-bg-tertiary);
+  padding: var(--space-3) var(--space-6);
+  color: var(--color-text-secondary);
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--font-size-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  border-bottom: 1px solid var(--color-surface-border);
+}
+
+.tickets-table td {
+  padding: var(--space-4) var(--space-6);
+  border-bottom: 1px solid var(--color-surface-border);
+  color: var(--color-text-primary);
+  vertical-align: middle;
+}
+
+.ticket-row {
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+}
+
+.ticket-row:hover {
+  background: var(--color-bg-tertiary);
+}
+
+.ticket-num {
+  font-family: monospace;
+  font-weight: var(--font-weight-bold);
+}
+
+.ticket-total {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-extrabold);
+  color: white;
+}
+
+.text-muted {
+  color: var(--color-text-tertiary);
+}

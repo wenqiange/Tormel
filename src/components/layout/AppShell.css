@@ -6,13 +6,13 @@
 .sidebar-logo {
   width: 44px;
   height: 44px;
-  background: linear-gradient(135deg, var(--color-accent), #8b5cf6);
-  border-radius: var(--radius-lg);
+  background: linear-gradient(135deg, var(--color-accent), #2e6a30);
+  border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
   justify-content: center;
   margin-bottom: var(--space-6);
-  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25);
+  box-shadow: 0 4px 10px rgba(70, 160, 73, 0.3);
 }
 
 .sidebar-logo-icon {
@@ -97,8 +97,9 @@
 /* ── Header ── */
 .app-header-title {
   font-size: var(--font-size-lg);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-text-primary);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-inverse); /* Blanco sobre verde */
+  letter-spacing: 0.25px;
 }
 
 .app-header-right {

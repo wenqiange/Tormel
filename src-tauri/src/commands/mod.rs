@@ -4,4 +4,5 @@ pub mod ventas;
 pub mod caja;
 pub mod productos;
 pub mod fs_commands;
+pub mod tickets;
 
