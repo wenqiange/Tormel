@@ -1,0 +1,129 @@
+.ajustes-panel-container {
+  padding: 1.5rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.ajustes-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 350px;
+  gap: 1.5rem;
+}
+
+.ajustes-loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 200px;
+  font-size: 1.1rem;
+  color: var(--text-muted);
+}
+
+.ajustes-card {
+  background-color: var(--bg-surface, #1e1e2e);
+  border-radius: 12px;
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.08));
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+}
+
+.ajustes-card .card-header {
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--border-color, rgba(255, 255, 255, 0.08));
+  background-color: rgba(255, 255, 255, 0.02);
+}
+
+.ajustes-card .card-header h3 {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 1.1rem;
+  color: var(--text-primary, #ffffff);
+}
+
+.ajustes-card .card-body {
+  padding: 1.5rem;
+}
+
+.form-row {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1.2rem;
+}
+
+.form-row:last-child {
+  margin-bottom: 0;
+}
+
+.form-group.col-6 {
+  flex: 0 0 calc(50% - 0.5rem);
+}
+
+.form-group.col-4 {
+  flex: 0 0 calc(33.333% - 0.666rem);
+}
+
+.form-group.col-12 {
+  flex: 0 0 100%;
+}
+
+.ajustes-sidebar-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.logo-upload-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 180px;
+}
+
+.logo-placeholder-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  color: var(--text-muted, #94a3b8);
+  gap: 10px;
+}
+
+.logo-placeholder-box .placeholder-icon {
+  opacity: 0.3;
+}
+
+.logo-upload-label {
+  cursor: pointer;
+}
+
+.logo-preview-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+}
+
+.logo-preview-box img {
+  max-width: 100%;
+  max-height: 120px;
+  border-radius: 8px;
+  object-fit: contain;
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.08));
+  padding: 6px;
+  background-color: white;
+}
+
+.btn-save-ajustes {
+  width: 100%;
+  justify-content: center;
+  box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
+}
+
+@media (max-width: 900px) {
+  .ajustes-form-grid {
+    grid-template-columns: 1fr;
+  }
+}

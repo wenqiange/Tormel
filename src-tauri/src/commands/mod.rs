@@ -7,3 +7,4 @@ pub mod fs_commands;
 pub mod clientes;
 pub mod tickets;
 pub mod email;
+pub mod config;

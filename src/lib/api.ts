@@ -119,6 +119,14 @@ export interface Producto {
   updated_at: string;
 }
 
+export interface LineaModificador {
+  id: number;
+  linea_venta_id: number;
+  modificador_id: number;
+  nombre: string;
+  precio_extra: number;
+}
+
 export interface LineaVenta {
   id: number;
   venta_id: number;
@@ -133,7 +141,9 @@ export interface LineaVenta {
   total: number;
   notas: string | null;
   created_at: string;
+  modificadores?: LineaModificador[];
 }
+
 
 export interface Pago {
   id: number;
@@ -316,6 +326,61 @@ export interface ActualizarCliente {
   notas?: string | null;
 }
 
+export interface Negocio {
+  id: number;
+  nombre: string;
+  nif: string;
+  direccion: string;
+  codigo_postal: string;
+  ciudad: string;
+  provincia: string;
+  telefono: string;
+  email: string;
+  logo_path: string | null;
+  moneda: string;
+  configuracion: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ActualizarNegocio {
+  nombre?: string;
+  nif?: string;
+  direccion?: string;
+  codigo_postal?: string;
+  ciudad?: string;
+  provincia?: string;
+  telefono?: string;
+  email?: string;
+  logo_path?: string | null;
+  moneda?: string;
+}
+
+export interface ModificadorGrupo {
+  id: number;
+  nombre: string;
+  obligatorio: boolean;
+  min_seleccion: number;
+  max_seleccion: number;
+  activo: boolean;
+  created_at: string;
+}
+
+export interface Modificador {
+  id: number;
+  grupo_id: number;
+  nombre: string;
+  precio_extra: number;
+  orden: number;
+  activo: boolean;
+  created_at: string;
+}
+
+export interface GrupoModificadoresConElementos {
+  grupo: ModificadorGrupo;
+  elementos: Modificador[];
+}
+
 // ============================================================================
 // API — Funciones tipadas sobre invoke()
 // ============================================================================
@@ -450,4 +515,24 @@ export const api = {
 
   guardarConfigSmtp: (server: string, port: number, username: string, password: string) =>
     invoke<void>("guardar_config_smtp", { server, port, username, password }),
+
+  // --- Configuración / VeriFactu ---
+  guardarConfigVerifactu: (certificadoB64: string | null, password: string | null, entorno: string) =>
+    invoke<void>("guardar_config_verifactu", { certificadoB64, password, entorno }),
+
+  obtenerConfigVerifactu: () =>
+    invoke<{ cargado: boolean; entorno: string }>("obtener_config_verifactu"),
+
+  // --- Negocio (Ajustes) ---
+  obtenerDatosNegocio: () =>
+    invoke<Negocio>("obtener_datos_negocio"),
+
+  guardarDatosNegocio: (datos: ActualizarNegocio) =>
+    invoke<Negocio>("guardar_datos_negocio", { datos }),
+
+  obtenerModificadoresProducto: (productoId: number) =>
+    invoke<GrupoModificadoresConElementos[]>("obtener_modificadores_producto", { productoId }),
+
+  agregarProductoMesaConModificadores: (mesaId: number, usuarioId: number, productoId: number, cantidad: number, modificadores: number[]) =>
+    invoke<VentaCompleta>("agregar_producto_mesa_con_modificadores", { mesaId, usuarioId, productoId, cantidad, modificadores }),
 };

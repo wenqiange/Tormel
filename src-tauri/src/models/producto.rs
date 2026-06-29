@@ -86,3 +86,10 @@ pub struct ActualizarProducto {
     pub activo: Option<bool>,
     pub orden: Option<i32>,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GrupoModificadoresConElementos {
+    pub grupo: ModificadorGrupo,
+    pub elementos: Vec<Modificador>,
+}
+

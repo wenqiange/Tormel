@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { api, type Cliente, type Ticket } from "../../lib/api";
+import { api, type Cliente, type Ticket, type Negocio } from "../../lib/api";
 import { X, Download, Mail } from "lucide-react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -13,6 +13,7 @@ interface GenerarFacturaModalProps {
 
 export function GenerarFacturaModal({ ticket, onClose }: GenerarFacturaModalProps) {
   const [clientes, setClientes] = useState<Cliente[]>([]);
+  const [negocio, setNegocio] = useState<Negocio | null>(null);
   const [clienteSeleccionado, setClienteSeleccionado] = useState<number | "">("");
   const [loading, setLoading] = useState(true);
   const [generando, setGenerando] = useState(false);
@@ -20,17 +21,21 @@ export function GenerarFacturaModal({ ticket, onClose }: GenerarFacturaModalProp
   const { showAlert, showConfirm } = useDialog();
 
   useEffect(() => {
-    const cargarClientes = async () => {
+    const cargarDatos = async () => {
       try {
-        const data = await api.listarClientes();
-        setClientes(data);
+        const [dataClientes, dataNegocio] = await Promise.all([
+          api.listarClientes(),
+          api.obtenerDatosNegocio()
+        ]);
+        setClientes(dataClientes);
+        setNegocio(dataNegocio);
       } catch (err) {
-        console.error("Error al cargar clientes:", err);
+        console.error("Error al cargar datos:", err);
       } finally {
         setLoading(false);
       }
     };
-    cargarClientes();
+    cargarDatos();
   }, []);
 
   const buildPDF = async () => {
@@ -53,12 +58,18 @@ export function GenerarFacturaModal({ ticket, onClose }: GenerarFacturaModalProp
       doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
       doc.text("FACTURA", 14, 22);
 
-      // Datos Empresa (Hardcoded o coger de context en futuro)
+      // Datos Empresa Dinámicos
+      const nombreEmpresa = negocio?.nombre || "Tormel POS";
+      const nifEmpresa = negocio?.nif ? `NIF: ${negocio.nif}` : "NIF: —";
+      const dirEmpresa = negocio?.direccion 
+        ? `${negocio.direccion}, ${negocio.codigo_postal || ""} ${negocio.ciudad || ""}` 
+        : "—";
+
       doc.setFontSize(10);
       doc.setTextColor(100, 100, 100);
-      doc.text("Tormel POS", 14, 30);
-      doc.text("CIF: B12345678", 14, 35);
-      doc.text("C/ Falsa 123, Madrid", 14, 40);
+      doc.text(nombreEmpresa, 14, 30);
+      doc.text(nifEmpresa, 14, 35);
+      doc.text(dirEmpresa, 14, 40);
 
       // Datos Factura
       doc.setTextColor(0, 0, 0);

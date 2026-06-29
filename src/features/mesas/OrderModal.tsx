@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { api, type Mesa, type Producto, type Familia, type VentaCompleta } from "../../lib/api";
 import { CheckoutModal } from "./CheckoutModal";
+import { SelectorModificadoresModal } from "./SelectorModificadoresModal";
 import { useDialog } from "../../context/DialogContext";
 import { X, Utensils, Receipt, Banknote, Trash2, Coffee, Minus, Plus, Edit2 } from "lucide-react";
+import type { GrupoModificadoresConElementos } from "../../lib/api";
 import "./OrderModal.css";
 
 interface OrderModalProps {
@@ -23,6 +25,11 @@ export function OrderModal({ mesa, usuarioId, onClose }: OrderModalProps) {
   const [loading, setLoading] = useState(true);
   const [mesaEstado, setMesaEstado] = useState(mesa.estado);
   const { showAlert, showPrompt } = useDialog();
+
+  // Modificadores
+  const [showSelectorModificadores, setShowSelectorModificadores] = useState(false);
+  const [modificadoresProducto, setModificadoresProducto] = useState<GrupoModificadoresConElementos[]>([]);
+  const [productoParaModificar, setProductoParaModificar] = useState<Producto | null>(null);
 
   useEffect(() => {
     const cargarCatalogoyVenta = async () => {
@@ -63,9 +70,20 @@ export function OrderModal({ mesa, usuarioId, onClose }: OrderModalProps) {
   const handleAgregarProducto = async (productoId: number) => {
     try {
       const prod = productos.find(p => p.id === productoId);
+      if (!prod) return;
+
+      // 1. Verificar si el producto tiene modificadores
+      const mods = await api.obtenerModificadoresProducto(productoId);
+      if (mods && mods.length > 0) {
+        setProductoParaModificar(prod);
+        setModificadoresProducto(mods);
+        setShowSelectorModificadores(true);
+        return;
+      }
+
       let precioPersonalizado = undefined;
       
-      if (prod && prod.precio === 0) {
+      if (prod.precio === 0) {
         const precioInput = await showPrompt({
           title: "Precio Personalizado",
           message: `Introduce el precio para ${prod.nombre} (€):`,
@@ -84,8 +102,6 @@ export function OrderModal({ mesa, usuarioId, onClose }: OrderModalProps) {
       const ventaActualizada = await api.agregarProductoMesa(mesa.id, usuarioId, productoId, 1, precioPersonalizado);
       setVentaActiva(ventaActualizada);
       
-      // Si la mesa estaba libre (Gris), ahora pasará a ocupada (Verde) en el backend.
-      // Lo reflejamos en el estado local del modal para habilitar acciones.
       if (mesaEstado === "libre") {
         setMesaEstado("ocupada");
       }
@@ -94,6 +110,29 @@ export function OrderModal({ mesa, usuarioId, onClose }: OrderModalProps) {
       await showAlert({ title: "Error", message: "No se pudo añadir el producto al pedido.", type: "danger" });
     }
   };
+
+  const handleSaveModificadores = async (seleccionados: number[]) => {
+    if (!productoParaModificar) return;
+    try {
+      const ventaActualizada = await api.agregarProductoMesaConModificadores(
+        mesa.id,
+        usuarioId,
+        productoParaModificar.id,
+        1,
+        seleccionados
+      );
+      setVentaActiva(ventaActualizada);
+      if (mesaEstado === "libre") {
+        setMesaEstado("ocupada");
+      }
+      setShowSelectorModificadores(false);
+      setProductoParaModificar(null);
+    } catch (err) {
+      console.error("Error al guardar modificadores:", err);
+      await showAlert({ title: "Error", message: "No se pudo añadir el producto con modificadores.", type: "danger" });
+    }
+  };
+
 
   const handleCambiarCantidad = async (productoId: number, cantidadActual: number, delta: number) => {
     try {
@@ -284,6 +323,16 @@ export function OrderModal({ mesa, usuarioId, onClose }: OrderModalProps) {
                 <div key={linea.id} className="order-item-row animate-fadeIn">
                   <div className="order-item-detail">
                     <span className="order-item-name">{linea.producto_nombre}</span>
+                    {linea.modificadores && linea.modificadores.length > 0 && (
+                      <div className="order-item-mods" style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '2px' }}>
+                        {linea.modificadores.map(m => (
+                          <span key={m.id} className="badge badge-secondary" style={{ fontSize: '0.75rem', padding: '2px 6px', borderRadius: '4px', backgroundColor: 'rgba(255,255,255,0.06)' }}>
+                            {m.nombre} {m.precio_extra > 0 ? `(+${m.precio_extra.toFixed(2)}€)` : ''}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
                     <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                       <span className="order-item-price-unit">{linea.total / linea.cantidad} €/u</span>
                       <button 
@@ -382,6 +431,20 @@ export function OrderModal({ mesa, usuarioId, onClose }: OrderModalProps) {
           }}
         />
       )}
+
+      {/* Selector de Modificadores */}
+      {showSelectorModificadores && productoParaModificar && (
+        <SelectorModificadoresModal
+          producto={productoParaModificar}
+          grupos={modificadoresProducto}
+          onClose={() => {
+            setShowSelectorModificadores(false);
+            setProductoParaModificar(null);
+          }}
+          onSave={handleSaveModificadores}
+        />
+      )}
     </div>
+
   );
 }

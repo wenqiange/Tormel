@@ -2,7 +2,7 @@ use rusqlite::{params, Connection, OptionalExtension};
 use std::str::FromStr;
 
 use crate::error::{AppError, AppResult};
-use crate::models::venta::{Venta, LineaVenta, Pago, VentaCompleta};
+use crate::models::venta::{Venta, LineaVenta, Pago, VentaCompleta, LineaModificador};
 use crate::models::common::{EstadoMesa, EstadoVenta, TipoVenta, MetodoPago};
 use crate::repositories::mesa_repo::MesaRepo;
 use crate::repositories::producto_repo::ProductoRepo;
@@ -340,10 +340,21 @@ impl VentaRepo {
             |row| row.get(0)
         ).optional()?.flatten();
 
-        let nif_emisor = "B12345678"; // En producción vendrá de la tabla Configuración
+        // Obtener el NIF del emisor configurado en la base de datos
+        let nif_emisor_db: String = conn.query_row(
+            "SELECT nif FROM negocio WHERE id = 1",
+            [],
+            |row| row.get(0)
+        ).unwrap_or_else(|_| "".to_string());
+
+        let nif_emisor = if nif_emisor_db.trim().is_empty() {
+            "B12345678".to_string()
+        } else {
+            nif_emisor_db.trim().to_string()
+        };
 
         let (huella, hash_hex) = calcular_huella(
-            nif_emisor,
+            &nif_emisor,
             &numero_factura,
             &fecha_hora_huso,
             "F2",
@@ -352,7 +363,7 @@ impl VentaRepo {
             hash_anterior.as_deref()
         );
 
-        let qr_data = generar_url_qr(nif_emisor, &numero_factura, &fecha_hora_huso, total_venta);
+        let qr_data = generar_url_qr(&nif_emisor, &numero_factura, &fecha_hora_huso, total_venta);
 
         conn.execute(
             "UPDATE venta 
@@ -472,7 +483,7 @@ impl VentaRepo {
             "SELECT id, venta_id, producto_id, producto_nombre, producto_precio, tipo_iva, cantidad, descuento_pct, subtotal, importe_iva, total, notas, created_at
              FROM linea_venta WHERE venta_id = ?1"
         )?;
-        let lineas = stmt_lineas.query_map([venta.id], |row| {
+        let mut lineas = stmt_lineas.query_map([venta.id], |row| {
             Ok(LineaVenta {
                 id: row.get(0)?,
                 venta_id: row.get(1)?,
@@ -489,7 +500,25 @@ impl VentaRepo {
                 created_at: row.get(12)?,
                 modificadores: Vec::new(),
             })
-        })?.collect::<Result<Vec<_>, _>>()?;
+        })?.collect::<Result<Vec<LineaVenta>, _>>()?;
+
+        for linea in &mut lineas {
+            let mut stmt_mods = conn.prepare(
+                "SELECT id, linea_venta_id, modificador_id, nombre, precio_extra, created_at
+                 FROM linea_modificador WHERE linea_venta_id = ?1"
+            )?;
+            let mods = stmt_mods.query_map([linea.id], |row| {
+                Ok(LineaModificador {
+                    id: row.get(0)?,
+                    linea_venta_id: row.get(1)?,
+                    modificador_id: row.get(2)?,
+                    nombre: row.get(3)?,
+                    precio_extra: row.get(4)?,
+                })
+            })?.collect::<Result<Vec<LineaModificador>, _>>()?;
+
+            linea.modificadores = mods;
+        }
 
         // Cargar pagos
         let mut stmt_pagos = conn.prepare(
@@ -539,7 +568,7 @@ impl VentaRepo {
     }
 
     /// Recalcula los acumulados monetarios de una venta en base a sus líneas.
-    fn actualizar_totales(conn: &Connection, venta_id: i64) -> AppResult<()> {
+    pub fn actualizar_totales(conn: &Connection, venta_id: i64) -> AppResult<()> {
         let (sum_subtotal, sum_iva, sum_total): (f64, f64, f64) = conn.query_row(
             "SELECT COALESCE(SUM(subtotal), 0.0), COALESCE(SUM(importe_iva), 0.0), COALESCE(SUM(total), 0.0)
              FROM linea_venta WHERE venta_id = ?1",
@@ -557,7 +586,7 @@ impl VentaRepo {
         Ok(())
     }
 
-    fn actualizar_estado_mesa_por_venta(conn: &Connection, venta_id: i64) -> AppResult<()> {
+    pub fn actualizar_estado_mesa_por_venta(conn: &Connection, venta_id: i64) -> AppResult<()> {
         let mesa_id_opt: Option<i64> = conn.query_row(
             "SELECT mesa_id FROM venta WHERE id = ?1",
             [venta_id],

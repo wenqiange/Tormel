@@ -8,7 +8,7 @@ use crate::error::{AppError, AppResult};
 /// Usa Mutex porque rusqlite::Connection no es Send+Sync.
 /// En un POS monousuario esto es perfectamente suficiente.
 pub struct DbState {
-    pub conn: Mutex<Connection>,
+    pub conn: std::sync::Arc<Mutex<Connection>>,
 }
 
 impl DbState {
@@ -30,7 +30,7 @@ impl DbState {
         Self::configure_pragmas(&conn)?;
 
         Ok(Self {
-            conn: Mutex::new(conn),
+            conn: std::sync::Arc::new(Mutex::new(conn)),
         })
     }
 

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { LayoutDashboard, ShoppingCart, Users, Grid3X3, PackageOpen, Receipt, Landmark, DollarSign, User, FileText } from "lucide-react";
+import { LayoutDashboard, ShoppingCart, Users, Grid3X3, PackageOpen, Receipt, Landmark, DollarSign, User, FileText, Settings } from "lucide-react";
 import { logout } from "../../stores/authStore";
 import type { Rol } from "../../lib/api";
 import { MesasPanel } from "../../features/mesas/MesasPanel";
@@ -11,6 +11,7 @@ import { VerifactuPanel } from "../../features/verifactu/VerifactuPanel";
 import { ClientesPanel } from "../../features/clientes/ClientesPanel";
 import { FacturasPanel } from "../../features/facturas/FacturasPanel";
 import { UsuariosPanel } from "../../features/usuarios/UsuariosPanel";
+import { AjustesPanel } from "../../features/ajustes/AjustesPanel";
 import "./AppShell.css";
 
 interface AppShellProps {
@@ -40,6 +41,7 @@ const navItems: NavItem[] = [
   { id: "clientes", icon: <User size={20} />, label: "Clientes", minRol: ["admin", "encargado"] },
   { id: "verifactu", icon: <Landmark size={20} />, label: "AEAT", minRol: ["admin", "encargado"] },
   { id: "usuarios", icon: <Users size={20} />, label: "Usuarios", minRol: ["admin"] },
+  { id: "ajustes", icon: <Settings size={20} />, label: "Ajustes", minRol: ["admin"] },
 ];
 
 export function AppShell({ nombre, rol, usuarioId }: AppShellProps) {
@@ -71,6 +73,8 @@ export function AppShell({ nombre, rol, usuarioId }: AppShellProps) {
         return <VerifactuPanel />;
       case "usuarios":
         return <UsuariosPanel />;
+      case "ajustes":
+        return <AjustesPanel />;
       default:
         return (
           <div className="placeholder-content">

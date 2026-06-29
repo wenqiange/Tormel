@@ -46,12 +46,52 @@ pub fn run() {
                 // sembrado) reciba el PIN por defecto 111111.
                 services::usuario_service::UsuarioService::asegurar_pins_por_defecto(&conn)
                     .expect("Error al inicializar los PIN por defecto");
+
+                // Sembrar modificadores de prueba si no existen
+                let count_grupos: i64 = conn.query_row(
+                    "SELECT COUNT(*) FROM modificador_grupo",
+                    [],
+                    |row| row.get(0)
+                ).unwrap_or(0);
+                
+                if count_grupos == 0 {
+                    let _ = conn.execute_batch(
+                        "INSERT INTO modificador_grupo (id, nombre, obligatorio, min_seleccion, max_seleccion) VALUES
+                            (1, 'Tipo de Leche', 1, 1, 1),
+                            (2, 'Extras de Hamburguesa', 0, 0, 3);
+                         
+                         INSERT INTO modificador (id, grupo_id, nombre, precio_extra, orden) VALUES
+                            (1, 1, 'Leche Entera', 0.0, 1),
+                            (2, 1, 'Leche Sin Lactosa', 0.10, 2),
+                            (3, 1, 'Leche de Avena', 0.20, 3),
+                            (4, 1, 'Leche de Soja', 0.20, 4),
+                            (5, 2, 'Extra Queso', 0.50, 1),
+                            (6, 2, 'Extra Bacon', 0.80, 2),
+                            (7, 2, 'Extra Huevo', 0.60, 3);
+
+                         -- Asociar 'Tipo de Leche' al Café con Leche (13) y Capuccino (15)
+                         INSERT INTO producto_modificador_grupo (producto_id, grupo_id) VALUES
+                            (13, 1),
+                            (15, 1);
+
+                         -- Asociar 'Extras de Hamburguesa' a la Hamburguesa Tormel (7)
+                         INSERT INTO producto_modificador_grupo (producto_id, grupo_id) VALUES
+                            (7, 2);
+                        "
+                    );
+                    info!("Insertados modificadores semilla para pruebas.");
+                }
             }
+
 
             info!("Base de datos inicializada correctamente");
 
             // Registrar estado de la DB para acceso desde commands
+            let db_conn = db_state.conn.clone();
             app.manage(db_state);
+
+            // Iniciar worker de envío VeriFactu en segundo plano
+            services::verifactu::sender_worker::iniciar_verifactu_worker(db_conn);
 
             Ok(())
         })
@@ -71,6 +111,7 @@ pub fn run() {
             commands::mesas::actualizar_posicion_mesa,
             commands::mesas::obtener_venta_activa_mesa,
             commands::mesas::agregar_producto_mesa,
+            commands::mesas::agregar_producto_mesa_con_modificadores,
             commands::mesas::actualizar_cantidad_producto_mesa,
             commands::mesas::actualizar_precio_producto_mesa,
             commands::mesas::eliminar_producto_mesa,
@@ -107,6 +148,7 @@ pub fn run() {
             commands::productos::eliminar_producto,
             commands::productos::crear_familia,
             commands::productos::eliminar_familia,
+            commands::productos::obtener_modificadores_producto,
 
             // Clientes
             commands::clientes::listar_clientes,
@@ -122,6 +164,12 @@ pub fn run() {
             // Email
             commands::email::enviar_factura_email,
             commands::email::guardar_config_smtp,
+
+            // Configuración
+            commands::config::guardar_config_verifactu,
+            commands::config::obtener_config_verifactu,
+            commands::config::obtener_datos_negocio,
+            commands::config::guardar_datos_negocio,
         ])
         .run(tauri::generate_context!())
         .expect("Error al ejecutar Tormel POS");

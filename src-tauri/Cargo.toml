@@ -34,7 +34,7 @@ chrono = { version = "0.4", features = ["serde"] }
 thiserror = "2"
 
 # Async runtime (para Verifactu queue en background)
-tokio = { version = "1", features = ["sync", "time"] }
+tokio = { version = "1", features = ["sync", "time", "rt"] }
 
 # Logging
 log = "0.4"
