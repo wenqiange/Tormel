@@ -1,6 +1,7 @@
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
 import { AppShell } from '../components/layout/AppShell';
 import { describe, it, expect, vi } from 'vitest';
+import { renderWithProviders } from './testUtils';
 
 // Mocks simples para evitar fallos por uso de Tauri invoke en subcomponentes
 vi.mock('../../stores/authStore', () => ({
@@ -12,7 +13,7 @@ vi.mock('@tauri-apps/api/core', () => ({
 
 describe('AppShell Component', () => {
   it('renders sidebar and basic elements for admin', () => {
-    render(<AppShell nombre="Test Admin" rol="admin" />);
+    renderWithProviders(<AppShell nombre="Test Admin" rol="admin" />);
     
     // Verifica que existe la sección de VeriFactu (AEAT)
     expect(screen.getByText('AEAT')).toBeInTheDocument();
@@ -25,7 +26,7 @@ describe('AppShell Component', () => {
   });
   
   it('does not show admin-only menus to camarero', () => {
-    render(<AppShell nombre="Test Camarero" rol="camarero" />);
+    renderWithProviders(<AppShell nombre="Test Camarero" rol="camarero" />);
     
     // El camarero no debe ver Usuarios ni Configuración Verifactu
     expect(screen.queryByText('Usuarios')).not.toBeInTheDocument();

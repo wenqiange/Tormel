@@ -4,7 +4,6 @@ use lettre::transport::smtp::authentication::Credentials;
 use lettre::message::{header::ContentType, Attachment, MultiPart, SinglePart};
 use rusqlite::Connection;
 use serde::Deserialize;
-use std::sync::Mutex;
 
 use crate::db::connection::DbState;
 use crate::error::{AppError, AppResult};
@@ -122,10 +121,20 @@ pub fn enviar_factura_email(
         )
         .map_err(|e| AppError::Interno(format!("Error al construir email: {}", e)))?;
 
-    // 4. Configurar el transporte SMTP
+    // 4. Configurar el transporte SMTP según el puerto.
+    //    - Puerto 465: TLS implícito (SMTPS) -> relay()
+    //    - Puerto 587 / 25: STARTTLS         -> starttls_relay()
+    //    Usar relay() (TLS implícito) sobre el 587 falla siempre, que era el bug.
     let creds = Credentials::new(smtp_config.username, smtp_config.password);
-    let mailer = SmtpTransport::relay(&smtp_config.server)
-        .map_err(|e| AppError::Interno(format!("Error configurando servidor SMTP: {}", e)))?
+
+    let builder = if smtp_config.port == 465 {
+        SmtpTransport::relay(&smtp_config.server)
+    } else {
+        SmtpTransport::starttls_relay(&smtp_config.server)
+    }
+    .map_err(|e| AppError::Interno(format!("Error configurando servidor SMTP: {}", e)))?;
+
+    let mailer = builder
         .port(smtp_config.port)
         .credentials(creds)
         .build();

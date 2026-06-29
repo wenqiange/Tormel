@@ -1,6 +1,7 @@
-import { render, screen, act } from '@testing-library/react';
+import { screen, act } from '@testing-library/react';
 import { MesasPanel } from '../features/mesas/MesasPanel';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { renderWithProviders } from './testUtils';
 
 vi.mock('@tauri-apps/api/core', () => ({
   invoke: vi.fn().mockImplementation(async (cmd) => {
@@ -40,7 +41,7 @@ describe('MesasPanel Component', () => {
 
   it('renders zones and tables from backend', async () => {
     await act(async () => {
-      render(<MesasPanel usuarioId={1} />);
+      renderWithProviders(<MesasPanel usuarioId={1} />);
     });
     
     // Zonas
