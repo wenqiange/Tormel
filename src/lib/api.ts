@@ -535,4 +535,25 @@ export const api = {
 
   agregarProductoMesaConModificadores: (mesaId: number, usuarioId: number, productoId: number, cantidad: number, modificadores: number[]) =>
     invoke<VentaCompleta>("agregar_producto_mesa_con_modificadores", { mesaId, usuarioId, productoId, cantidad, modificadores }),
+
+  traspasarComanda: (mesaOrigenId: number, mesaDestinoId: number) =>
+    invoke<void>("traspasar_comanda", { mesaOrigenId, mesaDestinoId }),
+
+  obtenerVentasActivasMesa: (mesaId: number) =>
+    invoke<VentaCompleta[]>("obtener_ventas_activas_mesa", { mesaId }),
+
+  crearDivisionCuenta: (mesaId: number, usuarioId: number) =>
+    invoke<VentaCompleta>("crear_division_cuenta", { mesaId, usuarioId }),
+
+  moverLineaComanda: (lineaId: number, ventaDestinoId: number, cantidad: number) =>
+    invoke<void>("mover_linea_comanda", { lineaId, ventaDestinoId, cantidad }),
+
+  cobrarVenta: (ventaId: number, metodoPago: MetodoPago, importeEntregado: number) =>
+    invoke<string>("cobrar_venta", { ventaId, metodoPago, importeEntregado }),
+
+  imprimirTicketVenta: (ventaId: number) =>
+    invoke<void>("imprimir_ticket_venta", { ventaId }),
+
+  eliminarVentaVacia: (ventaId: number) =>
+    invoke<void>("eliminar_venta_vacia", { ventaId }),
 };

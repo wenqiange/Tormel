@@ -283,14 +283,15 @@ impl VentaRepo {
 
     /// Cambia el estado de la mesa a 'por_cobrar' (Generar Ticket / Naranja)
     /// y guarda una instantánea del ticket (pre-cuenta) en el historial.
-    pub fn imprimir_ticket(conn: &Connection, mesa_id: i64) -> AppResult<()> {
-        let venta_activa = Self::obtener_activa_por_mesa(conn, mesa_id)?
-            .ok_or_else(|| AppError::Validation("No hay consumos activos en esta mesa para generar ticket".into()))?;
+    pub fn imprimir_ticket(conn: &Connection, venta_id: i64) -> AppResult<()> {
+        let venta_activa = Self::obtener_por_id(conn, venta_id)?;
 
         // Guardar el ticket de pre-cuenta en el historial local.
         TicketRepo::registrar_desde_venta(conn, &venta_activa, "pre_cuenta", None, None, None)?;
 
-        MesaRepo::actualizar_estado(conn, mesa_id, &EstadoMesa::PorCobrar)?;
+        if let Some(mesa_id) = venta_activa.venta.mesa_id {
+            MesaRepo::actualizar_estado(conn, mesa_id, &EstadoMesa::PorCobrar)?;
+        }
         Ok(())
     }
 
@@ -298,18 +299,17 @@ impl VentaRepo {
     /// - Registra el pago en la base de datos.
     /// - Cierra la venta (estado = 'cobrada', asigna fecha/hora, calcula ticket).
     /// - Actualiza los acumulados del turno de caja actual.
-    /// - Libera la mesa (estado = 'libre').
+    /// - Libera la mesa (estado = 'libre') si no hay más ventas abiertas.
     pub fn cobrar_venta(
         conn: &Connection,
-        mesa_id: i64,
+        venta_id: i64,
         metodo_pago: &str,
         importe_entregado: f64,
     ) -> AppResult<String> {
-        let venta_completa = Self::obtener_activa_por_mesa(conn, mesa_id)?
-            .ok_or_else(|| AppError::Validation("No hay ningún pedido abierto para esta mesa".into()))?;
+        let venta_completa = Self::obtener_por_id(conn, venta_id)?;
         
-        let venta_id = venta_completa.venta.id;
         let total_venta = venta_completa.venta.total;
+        let mesa_id = venta_completa.venta.mesa_id;
 
         if total_venta <= 0.0 {
             return Err(AppError::Validation("No se puede cobrar una cuenta con total de 0.00€".into()));
@@ -420,8 +420,30 @@ impl VentaRepo {
             Some(qr_data.as_str()),
         )?;
 
-        // 6. Restablecer mesa a libre
-        MesaRepo::actualizar_estado(conn, mesa_id, &EstadoMesa::Libre)?;
+        // 6. Restablecer mesa (si hay más ventas abiertas para esta mesa, no la marcamos como libre)
+        if let Some(m_id) = mesa_id {
+            let tiene_mas_abiertas: bool = conn.query_row(
+                "SELECT COUNT(*) > 0 FROM venta WHERE mesa_id = ?1 AND estado = 'abierta'",
+                [m_id],
+                |row| row.get(0)
+            )?;
+            if !tiene_mas_abiertas {
+                MesaRepo::actualizar_estado(conn, m_id, &EstadoMesa::Libre)?;
+            } else {
+                // Si aún quedan ventas abiertas, miramos si alguna tiene pre-cuenta impresa
+                let alguna_por_cobrar: bool = conn.query_row(
+                    "SELECT COUNT(*) > 0 FROM ticket WHERE tipo = 'pre_cuenta' AND venta_id IN (SELECT id FROM venta WHERE mesa_id = ?1 AND estado = 'abierta')",
+                    [m_id],
+                    |row| row.get(0)
+                )?;
+                let nuevo_estado = if alguna_por_cobrar {
+                    EstadoMesa::PorCobrar
+                } else {
+                    EstadoMesa::Ocupada
+                };
+                MesaRepo::actualizar_estado(conn, m_id, &nuevo_estado)?;
+            }
+        }
 
         Ok(qr_data)
     }
@@ -615,6 +637,266 @@ impl VentaRepo {
                 };
                 MesaRepo::actualizar_estado(conn, mesa_id, &nuevo_estado)?;
             }
+        }
+
+        Ok(())
+    }
+
+    pub fn obtener_activas_por_mesa(conn: &Connection, mesa_id: i64) -> AppResult<Vec<VentaCompleta>> {
+        let mut stmt = conn.prepare(
+            "SELECT id, mesa_id, usuario_id, cliente_id, turno_id, serie_id, numero, tipo, estado, comensales, subtotal, total_descuento, total_iva, total, notas, abierta_at, cerrada_at, created_at, hash_registro, hash_anterior, huella_verifactu, estado_verifactu, fecha_hora_huso, qr_data
+             FROM venta WHERE mesa_id = ?1 AND estado = 'abierta' ORDER BY id ASC"
+        )?;
+
+        let rows = stmt.query_map([mesa_id], |row| {
+            let tipo_str: String = row.get(7)?;
+            let estado_str: String = row.get(8)?;
+            Ok(Venta {
+                id: row.get(0)?,
+                mesa_id: row.get(1)?,
+                usuario_id: row.get(2)?,
+                cliente_id: row.get(3)?,
+                turno_id: row.get(4)?,
+                serie_id: row.get(5)?,
+                numero: row.get(6)?,
+                tipo: TipoVenta::from_str(&tipo_str).unwrap_or(TipoVenta::Mesa),
+                estado: EstadoVenta::from_str(&estado_str).unwrap_or(EstadoVenta::Abierta),
+                comensales: row.get(9)?,
+                subtotal: row.get(10)?,
+                total_descuento: row.get(11)?,
+                total_iva: row.get(12)?,
+                total: row.get(13)?,
+                notas: row.get(14)?,
+                abierta_at: row.get(15)?,
+                cerrada_at: row.get(16)?,
+                created_at: row.get(17)?,
+                hash_registro: row.get(18)?,
+                hash_anterior: row.get(19)?,
+                huella_verifactu: row.get(20)?,
+                estado_verifactu: row.get(21)?,
+                fecha_hora_huso: row.get(22)?,
+                qr_data: row.get(23)?,
+            })
+        })?;
+
+        let mut completas = Vec::new();
+        for venta_res in rows {
+            let venta = venta_res?;
+            let completa = Self::obtener_detalles(conn, venta)?;
+            completas.push(completa);
+        }
+        Ok(completas)
+    }
+
+    pub fn mover_linea_comanda(
+        conn: &Connection,
+        linea_id: i64,
+        venta_destino_id: i64,
+        cantidad_a_mover: f64,
+    ) -> AppResult<()> {
+        // 1. Obtener la línea de origen
+        let (venta_origen_id, producto_id, producto_nombre, producto_precio, tipo_iva, cantidad_actual, descuento_pct, notas): (i64, i64, String, f64, f64, f64, f64, Option<String>) = conn.query_row(
+            "SELECT venta_id, producto_id, producto_nombre, producto_precio, tipo_iva, cantidad, descuento_pct, notas FROM linea_venta WHERE id = ?1",
+            [linea_id],
+            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?, row.get(4)?, row.get(5)?, row.get(6)?, row.get(7)?))
+        )?;
+
+        if cantidad_a_mover <= 0.0 || cantidad_a_mover > cantidad_actual {
+            return Err(AppError::Validation("Cantidad a mover inválida".into()));
+        }
+
+        // 2. Obtener modificadores de la línea origen
+        let mut stmt = conn.prepare(
+            "SELECT modificador_id, nombre, precio_extra FROM linea_modificador WHERE linea_venta_id = ?1 ORDER BY modificador_id"
+        )?;
+        let mods: Vec<(i64, String, f64)> = stmt.query_map([linea_id], |row| {
+            Ok((row.get(0)?, row.get(1)?, row.get(2)?))
+        })?.collect::<Result<Vec<_>, _>>()?;
+
+        // 3. Buscar si existe una línea idéntica en la venta destino
+        let mut dest_stmt = conn.prepare(
+            "SELECT id, cantidad FROM linea_venta WHERE venta_id = ?1 AND producto_id = ?2 AND producto_precio = ?3 AND descuento_pct = ?4 AND (notas = ?5 OR (notas IS NULL AND ?5 IS NULL))"
+        )?;
+        
+        let dest_lines = dest_stmt.query_map(
+            params![venta_destino_id, producto_id, producto_precio, descuento_pct, notas],
+            |row| Ok((row.get::<_, i64>(0)?, row.get::<_, f64>(1)?))
+        )?.collect::<Result<Vec<_>, _>>()?;
+
+        let mut linea_destino_id: Option<i64> = None;
+        for (d_linea_id, _d_cantidad) in dest_lines {
+            // Verificar si esta línea de destino tiene exactamente los mismos modificadores
+            let mut stmt_m = conn.prepare(
+                "SELECT modificador_id, nombre, precio_extra FROM linea_modificador WHERE linea_venta_id = ?1 ORDER BY modificador_id"
+            )?;
+            let d_mods: Vec<(i64, String, f64)> = stmt_m.query_map([d_linea_id], |row| {
+                Ok((row.get(0)?, row.get(1)?, row.get(2)?))
+            })?.collect::<Result<Vec<_>, _>>()?;
+
+            if mods == d_mods {
+                linea_destino_id = Some(d_linea_id);
+                break;
+            }
+        }
+
+        // 4. Mover o fusionar
+        if let Some(dest_id) = linea_destino_id {
+            // Fusionar en línea existente de destino
+            let d_cant: f64 = conn.query_row(
+                "SELECT cantidad FROM linea_venta WHERE id = ?1",
+                [dest_id],
+                |row| row.get(0)
+            )?;
+            let nueva_cant_dest = d_cant + cantidad_a_mover;
+            let subtotal = producto_precio * nueva_cant_dest;
+            let importe_iva = subtotal * (tipo_iva / 100.0);
+            let total = subtotal + importe_iva;
+
+            conn.execute(
+                "UPDATE linea_venta SET cantidad = ?1, subtotal = ?2, importe_iva = ?3, total = ?4 WHERE id = ?5",
+                params![nueva_cant_dest, subtotal, importe_iva, total, dest_id]
+            )?;
+
+            // Reducir u ocultar/eliminar línea origen
+            if (cantidad_actual - cantidad_a_mover).abs() < 0.0001 {
+                conn.execute("DELETE FROM linea_venta WHERE id = ?1", [linea_id])?;
+            } else {
+                let nueva_cant_orig = cantidad_actual - cantidad_a_mover;
+                let subtotal_orig = producto_precio * nueva_cant_orig;
+                let importe_iva_orig = subtotal_orig * (tipo_iva / 100.0);
+                let total_orig = subtotal_orig + importe_iva_orig;
+                conn.execute(
+                    "UPDATE linea_venta SET cantidad = ?1, subtotal = ?2, importe_iva = ?3, total = ?4 WHERE id = ?5",
+                    params![nueva_cant_orig, subtotal_orig, importe_iva_orig, total_orig, linea_id]
+                )?;
+            }
+        } else {
+            // No existe línea idéntica en destino
+            if (cantidad_actual - cantidad_a_mover).abs() < 0.0001 {
+                // Mover toda la línea simplemente actualizando venta_id
+                conn.execute(
+                    "UPDATE linea_venta SET venta_id = ?1 WHERE id = ?2",
+                    params![venta_destino_id, linea_id]
+                )?;
+            } else {
+                // Reducir línea origen
+                let nueva_cant_orig = cantidad_actual - cantidad_a_mover;
+                let subtotal_orig = producto_precio * nueva_cant_orig;
+                let importe_iva_orig = subtotal_orig * (tipo_iva / 100.0);
+                let total_orig = subtotal_orig + importe_iva_orig;
+                conn.execute(
+                    "UPDATE linea_venta SET cantidad = ?1, subtotal = ?2, importe_iva = ?3, total = ?4 WHERE id = ?5",
+                    params![nueva_cant_orig, subtotal_orig, importe_iva_orig, total_orig, linea_id]
+                )?;
+
+                // Crear nueva línea en venta_destino
+                let subtotal_dest = producto_precio * cantidad_a_mover;
+                let importe_iva_dest = subtotal_dest * (tipo_iva / 100.0);
+                let total_dest = subtotal_dest + importe_iva_dest;
+
+                conn.execute(
+                    "INSERT INTO linea_venta (venta_id, producto_id, producto_nombre, producto_precio, tipo_iva, cantidad, descuento_pct, subtotal, importe_iva, total, notas)
+                     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
+                    params![
+                        venta_destino_id,
+                        producto_id,
+                        producto_nombre,
+                        producto_precio,
+                        tipo_iva,
+                        cantidad_a_mover,
+                        descuento_pct,
+                        subtotal_dest,
+                        importe_iva_dest,
+                        total_dest,
+                        notas
+                    ]
+                )?;
+                let nueva_linea_id = conn.last_insert_rowid();
+
+                // Copiar modificadores
+                for (mod_id, nom, pr_extra) in mods {
+                    conn.execute(
+                        "INSERT INTO linea_modificador (linea_venta_id, modificador_id, nombre, precio_extra)
+                         VALUES (?1, ?2, ?3, ?4)",
+                        params![nueva_linea_id, mod_id, nom, pr_extra]
+                    )?;
+                }
+            }
+        }
+
+        // 5. Actualizar totales de ambas ventas
+        Self::actualizar_totales(conn, venta_origen_id)?;
+        Self::actualizar_totales(conn, venta_destino_id)?;
+
+        Ok(())
+    }
+
+    pub fn traspasar_comanda(
+        conn: &Connection,
+        mesa_origen_id: i64,
+        mesa_destino_id: i64,
+    ) -> AppResult<()> {
+        let ventas_origen = Self::obtener_activas_por_mesa(conn, mesa_origen_id)?;
+        if ventas_origen.is_empty() {
+            return Err(AppError::Validation("La mesa de origen no tiene comandas activas".into()));
+        }
+
+        let ventas_destino = Self::obtener_activas_por_mesa(conn, mesa_destino_id)?;
+
+        if ventas_destino.is_empty() {
+            // Mesa destino no tiene comandas activas. Simplemente cambiamos el mesa_id de todas las ventas de origen.
+            for v in ventas_origen {
+                conn.execute(
+                    "UPDATE venta SET mesa_id = ?1 WHERE id = ?2",
+                    params![mesa_destino_id, v.venta.id],
+                )?;
+            }
+
+            // Copiar el estado de la mesa de origen a la mesa de destino
+            let estado_origen: String = conn.query_row(
+                "SELECT estado FROM mesa WHERE id = ?1",
+                [mesa_origen_id],
+                |row| row.get(0)
+            )?;
+            conn.execute(
+                "UPDATE mesa SET estado = ?1 WHERE id = ?2",
+                params![estado_origen, mesa_destino_id],
+            )?;
+            conn.execute(
+                "UPDATE mesa SET estado = 'libre' WHERE id = ?1",
+                params![mesa_origen_id],
+            )?;
+        } else {
+            // Mesa destino ya tiene comandas activas.
+            // Fusionamos todas las comandas de origen en la primera comanda de destino.
+            let vd_first_id = ventas_destino[0].venta.id;
+
+            for vo in ventas_origen {
+                for linea in vo.lineas {
+                    Self::mover_linea_comanda(conn, linea.id, vd_first_id, linea.cantidad)?;
+                }
+                // Borrar la venta de origen vacía
+                conn.execute("DELETE FROM venta WHERE id = ?1", [vo.venta.id])?;
+            }
+
+            // Actualizar estado de la mesa destino
+            let estado_origen: String = conn.query_row(
+                "SELECT estado FROM mesa WHERE id = ?1",
+                [mesa_origen_id],
+                |row| row.get(0)
+            )?;
+            let estado_destino: String = conn.query_row(
+                "SELECT estado FROM mesa WHERE id = ?1",
+                [mesa_destino_id],
+                |row| row.get(0)
+            )?;
+            let nuevo_estado = if estado_origen == "por_cobrar" || estado_destino == "por_cobrar" {
+                EstadoMesa::PorCobrar
+            } else {
+                EstadoMesa::Ocupada
+            };
+            MesaRepo::actualizar_estado(conn, mesa_destino_id, &nuevo_estado)?;
+            MesaRepo::actualizar_estado(conn, mesa_origen_id, &EstadoMesa::Libre)?;
         }
 
         Ok(())

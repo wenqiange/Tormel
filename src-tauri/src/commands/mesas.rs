@@ -237,6 +237,8 @@ pub fn imprimir_ticket_mesa(
     let venta_activa = VentaRepo::obtener_activa_por_mesa(&conn, mesa_id)?
         .ok_or_else(|| AppError::Validation("No hay consumos activos en esta mesa para generar ticket".into()))?;
 
+    let venta_id = venta_activa.venta.id;
+
     // 2. Obtener datos del negocio
     let negocio = crate::repositories::negocio_repo::NegocioRepo::obtener(&conn)?;
 
@@ -250,7 +252,7 @@ pub fn imprimir_ticket_mesa(
     log::info!("Simulación de Impresión Térmica ESC/POS guardada en: {:?}", path_ticket);
 
     // 5. Proceder a guardar en BBDD y actualizar estado de la mesa
-    VentaRepo::imprimir_ticket(&conn, mesa_id)
+    VentaRepo::imprimir_ticket(&conn, venta_id)
 }
 
 /// Cierra el pedido cobrándolo y liberando la mesa.
@@ -270,11 +272,13 @@ pub fn cobrar_mesa(
     let venta_activa = VentaRepo::obtener_activa_por_mesa(&conn, mesa_id)?
         .ok_or_else(|| AppError::Validation("No hay consumos activos en esta mesa para cobrar".into()))?;
 
+    let venta_id = venta_activa.venta.id;
+
     // Cobrar la venta (genera ticket y cierra)
-    let n_ticket = VentaRepo::cobrar_venta(&conn, mesa_id, &metodo_pago, importe_entregado)?;
+    let n_ticket = VentaRepo::cobrar_venta(&conn, venta_id, &metodo_pago, importe_entregado)?;
 
     // Cargar los datos actualizados con el número de ticket y huella fiscal
-    let venta_cerrada = VentaRepo::obtener_por_id(&conn, venta_activa.venta.id)?;
+    let venta_cerrada = VentaRepo::obtener_por_id(&conn, venta_id)?;
     let negocio = crate::repositories::negocio_repo::NegocioRepo::obtener(&conn)?;
 
     // Generar e imprimir ticket final
@@ -286,6 +290,129 @@ pub fn cobrar_mesa(
     }
 
     Ok(n_ticket)
+}
+
+#[tauri::command]
+pub fn traspasar_comanda(
+    mesa_origen_id: i64,
+    mesa_destino_id: i64,
+    db: State<'_, DbState>,
+) -> AppResult<()> {
+    let conn = db.conn.lock().map_err(|e| {
+        AppError::Interno(format!("Error de bloqueo de base de datos: {}", e))
+    })?;
+    VentaRepo::traspasar_comanda(&conn, mesa_origen_id, mesa_destino_id)
+}
+
+#[tauri::command]
+pub fn obtener_ventas_activas_mesa(
+    mesa_id: i64,
+    db: State<'_, DbState>,
+) -> AppResult<Vec<VentaCompleta>> {
+    let conn = db.conn.lock().map_err(|e| {
+        AppError::Interno(format!("Error de bloqueo de base de datos: {}", e))
+    })?;
+    VentaRepo::obtener_activas_por_mesa(&conn, mesa_id)
+}
+
+#[tauri::command]
+pub fn crear_division_cuenta(
+    mesa_id: i64,
+    usuario_id: i64,
+    db: State<'_, DbState>,
+) -> AppResult<VentaCompleta> {
+    let conn = db.conn.lock().map_err(|e| {
+        AppError::Interno(format!("Error de bloqueo de base de datos: {}", e))
+    })?;
+    let venta_id = VentaRepo::crear_venta_abierta(&conn, mesa_id, usuario_id)?;
+    VentaRepo::obtener_por_id(&conn, venta_id)
+}
+
+#[tauri::command]
+pub fn mover_linea_comanda(
+    linea_id: i64,
+    venta_destino_id: i64,
+    cantidad: f64,
+    db: State<'_, DbState>,
+) -> AppResult<()> {
+    let conn = db.conn.lock().map_err(|e| {
+        AppError::Interno(format!("Error de bloqueo de base de datos: {}", e))
+    })?;
+    VentaRepo::mover_linea_comanda(&conn, linea_id, venta_destino_id, cantidad)
+}
+
+#[tauri::command]
+pub fn cobrar_venta(
+    venta_id: i64,
+    metodo_pago: String,
+    importe_entregado: f64,
+    app: AppHandle,
+    db: State<'_, DbState>,
+) -> AppResult<String> {
+    let conn = db.conn.lock().map_err(|e| {
+        AppError::Interno(format!("Error de bloqueo de base de datos: {}", e))
+    })?;
+
+    // Cobrar la venta
+    let n_ticket = VentaRepo::cobrar_venta(&conn, venta_id, &metodo_pago, importe_entregado)?;
+
+    // Cargar los datos actualizados con el número de ticket y huella fiscal
+    let venta_cerrada = VentaRepo::obtener_por_id(&conn, venta_id)?;
+    let negocio = crate::repositories::negocio_repo::NegocioRepo::obtener(&conn)?;
+
+    // Generar e imprimir ticket final
+    let ticket_txt = crate::services::impresion::escpos_builder::generar_ticket_texto(&negocio, &venta_cerrada);
+    if let Ok(app_data) = app.path().app_data_dir() {
+        let path_ticket = app_data.join("impresion_simulada.txt");
+        let _ = std::fs::write(&path_ticket, &ticket_txt);
+        log::info!("Simulación de Impresión de Factura Simplificada guardada en: {:?}", path_ticket);
+    }
+
+    Ok(n_ticket)
+}
+
+#[tauri::command]
+pub fn imprimir_ticket_venta(
+    venta_id: i64,
+    app: AppHandle,
+    db: State<'_, DbState>,
+) -> AppResult<()> {
+    let conn = db.conn.lock().map_err(|e| {
+        AppError::Interno(format!("Error de bloqueo de base de datos: {}", e))
+    })?;
+
+    let venta_activa = VentaRepo::obtener_por_id(&conn, venta_id)?;
+    let negocio = crate::repositories::negocio_repo::NegocioRepo::obtener(&conn)?;
+
+    let ticket_txt = crate::services::impresion::escpos_builder::generar_ticket_texto(&negocio, &venta_activa);
+    let app_data = app.path().app_data_dir().map_err(|e| AppError::Interno(e.to_string()))?;
+    let path_ticket = app_data.join("impresion_simulada.txt");
+    std::fs::write(&path_ticket, &ticket_txt).map_err(|e| AppError::Interno(e.to_string()))?;
+    log::info!("Simulación de Impresión Térmica ESC/POS guardada en: {:?}", path_ticket);
+
+    VentaRepo::imprimir_ticket(&conn, venta_id)
+}
+
+#[tauri::command]
+pub fn eliminar_venta_vacia(
+    venta_id: i64,
+    db: State<'_, DbState>,
+) -> AppResult<()> {
+    let conn = db.conn.lock().map_err(|e| {
+        AppError::Interno(format!("Error de bloqueo de base de datos: {}", e))
+    })?;
+
+    let count: i64 = conn.query_row(
+        "SELECT COUNT(*) FROM linea_venta WHERE venta_id = ?1",
+        [venta_id],
+        |row| row.get(0)
+    )?;
+
+    if count == 0 {
+        conn.execute("DELETE FROM venta WHERE id = ?1", [venta_id])?;
+    }
+
+    Ok(())
 }
 
 // ── CRUD Administración ──

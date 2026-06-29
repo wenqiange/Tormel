@@ -117,6 +117,13 @@ pub fn run() {
             commands::mesas::eliminar_producto_mesa,
             commands::mesas::imprimir_ticket_mesa,
             commands::mesas::cobrar_mesa,
+            commands::mesas::traspasar_comanda,
+            commands::mesas::obtener_ventas_activas_mesa,
+            commands::mesas::crear_division_cuenta,
+            commands::mesas::mover_linea_comanda,
+            commands::mesas::cobrar_venta,
+            commands::mesas::imprimir_ticket_venta,
+            commands::mesas::eliminar_venta_vacia,
 
             // Ventas
             commands::ventas::listar_familias,

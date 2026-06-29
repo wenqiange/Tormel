@@ -7,12 +7,13 @@ import "./CheckoutModal.css";
 
 interface CheckoutModalProps {
   mesa: Mesa;
+  ventaId: number;
   total: number;
   onClose: () => void;
   onSuccess: () => void;
 }
 
-export function CheckoutModal({ mesa, total, onClose, onSuccess }: CheckoutModalProps) {
+export function CheckoutModal({ mesa, ventaId, total, onClose, onSuccess }: CheckoutModalProps) {
   const [metodo, setMetodo] = useState<MetodoPago>("efectivo");
   const [entregadoStr, setEntregadoStr] = useState("");
   const [loading, setLoading] = useState(false);
@@ -60,7 +61,7 @@ export function CheckoutModal({ mesa, total, onClose, onSuccess }: CheckoutModal
     try {
       setLoading(true);
       const importeFinal = metodo === "efectivo" ? entregadoNum : total;
-      const qr_url = await api.cobrarMesa(mesa.id, metodo, importeFinal);
+      const qr_url = await api.cobrarVenta(ventaId, metodo, importeFinal);
       setQrData(qr_url);
     } catch (err) {
       console.error("Error al cobrar:", err);
