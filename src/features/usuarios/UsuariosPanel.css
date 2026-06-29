@@ -1,0 +1,141 @@
+/* ============================================================================
+   Usuarios — Panel de gestión (solo administradores)
+   ============================================================================ */
+
+.usuarios-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.panel-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--color-text-secondary);
+}
+
+.usuarios-content {
+  flex: 1;
+  background-color: var(--color-bg-secondary);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-surface-border);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+.text-primary {
+  color: var(--color-accent);
+}
+
+/* ── Celda de usuario ── */
+.usuario-celda {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.usuario-avatar {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border-radius: var(--radius-full);
+  background: linear-gradient(135deg, var(--color-accent), var(--color-accent-active));
+  color: var(--color-text-inverse);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+}
+
+.row-inactivo {
+  opacity: 0.55;
+}
+
+.btn-icon:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* ============================================================================
+   Modal de usuario
+   ============================================================================ */
+.usuario-modal {
+  max-width: 460px;
+}
+
+.usuario-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.usuario-modal-header h3 {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+}
+
+.usuario-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.usuario-form .form-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.form-hint {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-tertiary);
+}
+
+.pin-input {
+  letter-spacing: 0.25em;
+  font-weight: var(--font-weight-semibold);
+}
+
+/* ── Selector de rol ── */
+.rol-selector {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+}
+
+.rol-option {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: var(--space-3) var(--space-4);
+  text-align: left;
+  background: var(--color-bg-tertiary);
+  border: 2px solid var(--color-surface-border);
+  border-radius: var(--radius-md);
+  transition: all var(--transition-fast);
+}
+
+.rol-option:hover {
+  border-color: var(--color-accent);
+}
+
+.rol-option.active {
+  border-color: var(--color-accent);
+  background: var(--color-accent-subtle);
+}
+
+.rol-option-name {
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+}
+
+.rol-option-desc {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-tertiary);
+}

@@ -1,17 +1,22 @@
-import { useEffect } from "react";
 import { AppShell } from "./components/layout/AppShell";
-import { setSesion } from "./stores/authStore";
+import { useAuth } from "./stores/authStore";
+import { LoginView } from "./features/usuarios/LoginView";
 import { DialogProvider } from "./context/DialogContext";
 
 export default function App() {
-  // Simulamos un login por defecto como Administrador para el desarrollo
-  useEffect(() => {
-    setSesion({ usuario_id: 1, nombre: "Administrador", rol: "admin" });
-  }, []);
+  const { isAuthenticated, sesion } = useAuth();
 
   return (
     <DialogProvider>
-      <AppShell nombre="Administrador" rol="admin" />
+      {isAuthenticated && sesion ? (
+        <AppShell
+          nombre={sesion.nombre}
+          rol={sesion.rol}
+          usuarioId={sesion.usuario_id}
+        />
+      ) : (
+        <LoginView />
+      )}
     </DialogProvider>
   );
 }

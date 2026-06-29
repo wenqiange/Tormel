@@ -197,3 +197,108 @@
   font-size: var(--font-size-xs);
   color: var(--color-text-tertiary);
 }
+
+/* ── Pista informativa (setup) ── */
+.login-hint {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-tertiary);
+}
+
+.login-hint strong {
+  color: var(--color-accent-text);
+  letter-spacing: 0.1em;
+}
+
+/* ── Pantalla de PIN ── */
+.pin-container {
+  width: 100%;
+  max-width: 340px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-5);
+  position: relative;
+}
+
+.pin-back {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+  transition: all var(--transition-fast);
+}
+
+.pin-back:hover {
+  background: var(--color-bg-hover);
+  color: var(--color-text-primary);
+}
+
+.pin-user {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.pin-user-avatar {
+  margin-bottom: 0;
+  width: 44px;
+  height: 44px;
+}
+
+.pin-user-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.pin-user-name {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+}
+
+.pin-dots {
+  display: flex;
+  gap: var(--space-3);
+  justify-content: center;
+  padding: var(--space-2) 0;
+}
+
+.pin-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: var(--radius-full);
+  background: transparent;
+  border: 2px solid var(--color-surface-border);
+  transition: all var(--transition-fast);
+}
+
+.pin-dot.filled {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  transform: scale(1.05);
+}
+
+.pin-numpad {
+  width: 100%;
+  max-width: 300px;
+}
+
+.pin-numpad .numpad-key {
+  aspect-ratio: 1.3;
+  cursor: pointer;
+}
+
+.pin-numpad .numpad-key:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

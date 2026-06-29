@@ -19,6 +19,7 @@ pub struct Usuario {
 pub struct NuevoUsuario {
     pub nombre: String,
     pub rol: Rol,
+    pub pin: String,
 }
 
 /// DTO para actualizar un usuario.
@@ -27,6 +28,8 @@ pub struct ActualizarUsuario {
     pub nombre: Option<String>,
     pub rol: Option<Rol>,
     pub activo: Option<bool>,
+    /// Si se proporciona, restablece el PIN del usuario.
+    pub pin: Option<String>,
 }
 
 /// Respuesta de autenticación.

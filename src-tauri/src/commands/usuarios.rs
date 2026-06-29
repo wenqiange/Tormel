@@ -5,13 +5,13 @@ use crate::error::AppResult;
 use crate::models::usuario::{ActualizarUsuario, NuevoUsuario, SesionUsuario, Usuario};
 use crate::services::usuario_service::UsuarioService;
 
-/// Autentica un usuario directamente por su ID.
+/// Autentica un usuario por su ID verificando el PIN.
 #[tauri::command]
-pub fn login(usuario_id: i64, db: State<'_, DbState>) -> AppResult<SesionUsuario> {
+pub fn login(usuario_id: i64, pin: String, db: State<'_, DbState>) -> AppResult<SesionUsuario> {
     let conn = db.conn.lock().map_err(|e| {
         crate::error::AppError::Interno(format!("Error de lock: {}", e))
     })?;
-    UsuarioService::login(&conn, usuario_id)
+    UsuarioService::login(&conn, usuario_id, &pin)
 }
 
 /// Verifica si es la primera ejecución (no hay usuarios).

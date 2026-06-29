@@ -10,11 +10,13 @@ import { ProductosPanel } from "../../features/productos/ProductosPanel";
 import { VerifactuPanel } from "../../features/verifactu/VerifactuPanel";
 import { ClientesPanel } from "../../features/clientes/ClientesPanel";
 import { FacturasPanel } from "../../features/facturas/FacturasPanel";
+import { UsuariosPanel } from "../../features/usuarios/UsuariosPanel";
 import "./AppShell.css";
 
 interface AppShellProps {
   nombre: string;
   rol: Rol;
+  usuarioId: number;
   children?: React.ReactNode;
 }
 
@@ -25,11 +27,14 @@ interface NavItem {
   minRol?: Rol[];
 }
 
+// El rol "camarero" (Usuario) solo puede operar mesas: añadir productos,
+// cobrar y generar tickets. El resto de secciones son para administradores
+// (y encargados).
 const navItems: NavItem[] = [
   { id: "mesas", icon: <Grid3X3 size={20} />, label: "Mesas" },
-  { id: "ventas", icon: <ShoppingCart size={20} />, label: "Ventas" },
-  { id: "tickets", icon: <Receipt size={20} />, label: "Tickets" },
-  { id: "facturas", icon: <FileText size={20} />, label: "Facturas" },
+  { id: "ventas", icon: <ShoppingCart size={20} />, label: "Ventas", minRol: ["admin", "encargado"] },
+  { id: "tickets", icon: <Receipt size={20} />, label: "Tickets", minRol: ["admin", "encargado"] },
+  { id: "facturas", icon: <FileText size={20} />, label: "Facturas", minRol: ["admin", "encargado"] },
   { id: "productos", icon: <PackageOpen size={20} />, label: "Productos", minRol: ["admin", "encargado"] },
   { id: "caja", icon: <DollarSign size={20} />, label: "Caja", minRol: ["admin", "encargado"] },
   { id: "clientes", icon: <User size={20} />, label: "Clientes", minRol: ["admin", "encargado"] },
@@ -37,7 +42,7 @@ const navItems: NavItem[] = [
   { id: "usuarios", icon: <Users size={20} />, label: "Usuarios", minRol: ["admin"] },
 ];
 
-export function AppShell({ nombre, rol }: AppShellProps) {
+export function AppShell({ nombre, rol, usuarioId }: AppShellProps) {
   const [vistaActiva, setVistaActiva] = useState<string>("mesas");
 
   const visibleItems = navItems.filter(
@@ -49,7 +54,7 @@ export function AppShell({ nombre, rol }: AppShellProps) {
   const renderContenido = () => {
     switch (vistaActiva) {
       case "mesas":
-        return <MesasPanel usuarioId={1} />; // ID 1 es el Administrador por defecto
+        return <MesasPanel usuarioId={usuarioId} />;
       case "ventas":
         return <VentasPanel />;
       case "tickets":
@@ -64,6 +69,8 @@ export function AppShell({ nombre, rol }: AppShellProps) {
         return <ClientesPanel />;
       case "verifactu":
         return <VerifactuPanel />;
+      case "usuarios":
+        return <UsuariosPanel />;
       default:
         return (
           <div className="placeholder-content">

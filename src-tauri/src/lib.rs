@@ -41,6 +41,11 @@ pub fn run() {
                 let conn = db_state.conn.lock().unwrap();
                 migrator::run_migrations(&conn)
                     .expect("Error al ejecutar migraciones");
+
+                // Garantizar que todo usuario sin PIN (p. ej. el administrador
+                // sembrado) reciba el PIN por defecto 111111.
+                services::usuario_service::UsuarioService::asegurar_pins_por_defecto(&conn)
+                    .expect("Error al inicializar los PIN por defecto");
             }
 
             info!("Base de datos inicializada correctamente");

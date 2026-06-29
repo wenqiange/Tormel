@@ -252,12 +252,14 @@ export interface ActualizarProducto {
 export interface NuevoUsuario {
   nombre: string;
   rol: Rol;
+  pin: string;
 }
 
 export interface ActualizarUsuario {
   nombre?: string;
   rol?: Rol;
   activo?: boolean;
+  pin?: string;
 }
 
 export interface AbrirTurnoDTO {
@@ -318,9 +320,23 @@ export interface ActualizarCliente {
 // API — Funciones tipadas sobre invoke()
 // ============================================================================
 
+/// Etiqueta legible del rol para la interfaz.
+/// El rol "camarero" se presenta como "Usuario" en Tormel.
+export function etiquetaRol(rol: Rol): string {
+  switch (rol) {
+    case "admin":
+      return "Administrador";
+    case "encargado":
+      return "Encargado";
+    case "camarero":
+      return "Usuario";
+  }
+}
+
 export const api = {
   // --- Usuarios ---
-  login: (usuarioId: number) => invoke<SesionUsuario>("login", { usuarioId }),
+  login: (usuarioId: number, pin: string) =>
+    invoke<SesionUsuario>("login", { usuarioId, pin }),
 
   esPrimeraEjecucion: () => invoke<boolean>("es_primera_ejecucion"),
 
