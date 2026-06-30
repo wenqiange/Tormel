@@ -1,5 +1,7 @@
 use tauri::{State, Manager, AppHandle};
 
+use crate::auth::permissions::Permiso;
+use crate::auth::session::SessionState;
 use crate::db::connection::DbState;
 use crate::error::{AppError, AppResult};
 use crate::models::mesa::{Mesa, Zona};
@@ -55,12 +57,17 @@ pub fn obtener_venta_activa_mesa(
 #[tauri::command]
 pub fn agregar_producto_mesa(
     mesa_id: i64,
-    usuario_id: i64,
     producto_id: i64,
     cantidad: f64,
-    precio_personalizado: Option<f64>,
+    precio_personalizado: Option<i64>,
     db: State<'_, DbState>,
+    session: State<'_, SessionState>,
 ) -> AppResult<VentaCompleta> {
+    // La identidad del operador se toma de la sesión del backend, nunca del
+    // cliente, para que las ventas no puedan atribuirse a otro usuario.
+    let sesion = session.exigir(Permiso::VentaCrear)?;
+    let usuario_id = sesion.usuario_id;
+
     let conn = db.conn.lock().map_err(|e| {
         AppError::Interno(format!("Error de bloqueo de base de datos: {}", e))
     })?;
@@ -81,44 +88,51 @@ pub fn agregar_producto_mesa(
 #[tauri::command]
 pub fn agregar_producto_mesa_con_modificadores(
     mesa_id: i64,
-    usuario_id: i64,
     producto_id: i64,
     cantidad: f64,
     modificadores: Vec<i64>,
     db: State<'_, DbState>,
+    session: State<'_, SessionState>,
 ) -> AppResult<VentaCompleta> {
+    let sesion = session.exigir(Permiso::VentaCrear)?;
+    let usuario_id = sesion.usuario_id;
+
     let conn = db.conn.lock().map_err(|e| {
         AppError::Interno(format!("Error de bloqueo de base de datos: {}", e))
     })?;
 
+    // Toda la inserción de la línea con sus modificadores y el recálculo de
+    // totales debe ser atómica para no dejar líneas a medio crear.
+    let tx = conn.unchecked_transaction()?;
+
     // 1. Obtener la venta activa o crear una nueva
-    let venta_id = match VentaRepo::obtener_activa_por_mesa(&conn, mesa_id)? {
+    let venta_id = match VentaRepo::obtener_activa_por_mesa(&tx, mesa_id)? {
         Some(vc) => vc.venta.id,
-        None => VentaRepo::crear_venta_abierta(&conn, mesa_id, usuario_id)?,
+        None => VentaRepo::crear_venta_abierta(&tx, mesa_id, usuario_id)?,
     };
 
     // 2. Cargar datos del producto
-    let producto = crate::repositories::producto_repo::ProductoRepo::obtener_por_id(&conn, producto_id)?;
+    let producto = crate::repositories::producto_repo::ProductoRepo::obtener_por_id(&tx, producto_id)?;
 
     // 3. Crear una nueva línea de venta independiente (ya que los modificadores la hacen única)
-    conn.execute(
+    tx.execute(
         "INSERT INTO linea_venta (venta_id, producto_id, producto_nombre, producto_precio, tipo_iva, cantidad, descuento_pct, subtotal, importe_iva, total)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, 0.0, 0.0, 0.0, 0.0)",
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, 0.0, 0, 0, 0)",
         rusqlite::params![venta_id, producto_id, producto.nombre, producto.precio, producto.tipo_iva, cantidad],
     )?;
     
-    let linea_id = conn.last_insert_rowid();
+    let linea_id = tx.last_insert_rowid();
 
-    // 4. Cargar e insertar cada modificador seleccionado
-    let mut extra_total = 0.0;
+    // 4. Cargar e insertar cada modificador seleccionado (suplementos en céntimos)
+    let mut extra_total: i64 = 0;
     for mod_id in modificadores {
-        let (nombre_mod, precio_extra): (String, f64) = conn.query_row(
+        let (nombre_mod, precio_extra): (String, i64) = tx.query_row(
             "SELECT nombre, precio_extra FROM modificador WHERE id = ?1",
             [mod_id],
             |row| Ok((row.get(0)?, row.get(1)?))
         )?;
         
-        conn.execute(
+        tx.execute(
             "INSERT INTO linea_modificador (linea_venta_id, modificador_id, nombre, precio_extra)
              VALUES (?1, ?2, ?3, ?4)",
             rusqlite::params![linea_id, mod_id, nombre_mod, precio_extra],
@@ -127,24 +141,22 @@ pub fn agregar_producto_mesa_con_modificadores(
         extra_total += precio_extra;
     }
 
-    // 5. Recalcular e insertar totales de la línea con los modificadores
-    let precio_base_neto = producto.precio / (1.0 + producto.tipo_iva / 100.0);
-    let precio_extra_neto = extra_total / (1.0 + producto.tipo_iva / 100.0);
-    let precio_final_neto = precio_base_neto + precio_extra_neto;
-    
-    let subtotal = precio_final_neto * cantidad;
-    let importe_iva = subtotal * (producto.tipo_iva / 100.0);
-    let total = subtotal + importe_iva;
+    // 5. Recalcular los totales de la línea: el PVP bruto unitario es el del
+    //    producto más los suplementos de los modificadores.
+    let iva_pct = crate::dinero::iva_pct_entero(producto.tipo_iva);
+    let pvp_final = producto.precio + extra_total;
+    let (subtotal, importe_iva, total) = crate::dinero::desglose_linea(pvp_final, cantidad, iva_pct);
 
-    // Actualizar el precio base de la línea sumando la parte base neta
-    conn.execute(
+    tx.execute(
         "UPDATE linea_venta SET producto_precio = ?1, subtotal = ?2, importe_iva = ?3, total = ?4 WHERE id = ?5",
-        rusqlite::params![precio_final_neto, subtotal, importe_iva, total, linea_id],
+        rusqlite::params![pvp_final, subtotal, importe_iva, total, linea_id],
     )?;
 
     // 6. Recalcular los totales acumulados de la venta completa
-    VentaRepo::actualizar_totales(&conn, venta_id)?;
-    VentaRepo::actualizar_estado_mesa_por_venta(&conn, venta_id)?;
+    VentaRepo::actualizar_totales(&tx, venta_id)?;
+    VentaRepo::actualizar_estado_mesa_por_venta(&tx, venta_id)?;
+
+    tx.commit()?;
 
     // 7. Devolver la venta completa actualizada
     VentaRepo::obtener_por_id(&conn, venta_id)
@@ -155,11 +167,14 @@ pub fn agregar_producto_mesa_con_modificadores(
 #[tauri::command]
 pub fn actualizar_cantidad_producto_mesa(
     mesa_id: i64,
-    usuario_id: i64,
     producto_id: i64,
     cantidad: f64,
     db: State<'_, DbState>,
+    session: State<'_, SessionState>,
 ) -> AppResult<Option<VentaCompleta>> {
+    let sesion = session.exigir(Permiso::VentaCrear)?;
+    let usuario_id = sesion.usuario_id;
+
     let conn = db.conn.lock().map_err(|e| {
         AppError::Interno(format!("Error de bloqueo de base de datos: {}", e))
     })?;
@@ -183,11 +198,15 @@ pub fn actualizar_cantidad_producto_mesa(
 #[tauri::command]
 pub fn actualizar_precio_producto_mesa(
     mesa_id: i64,
-    usuario_id: i64,
     producto_id: i64,
-    nuevo_precio: f64,
+    nuevo_precio: i64,
     db: State<'_, DbState>,
+    session: State<'_, SessionState>,
 ) -> AppResult<Option<VentaCompleta>> {
+    // Cambiar el precio de una línea equivale a aplicar un descuento/recargo:
+    // restringido a admin y encargado.
+    session.exigir(Permiso::VentaDescuento)?;
+
     let conn = db.conn.lock().map_err(|e| {
         AppError::Interno(format!("Error de bloqueo de base de datos: {}", e))
     })?;
@@ -208,7 +227,9 @@ pub fn eliminar_producto_mesa(
     mesa_id: i64,
     producto_id: i64,
     db: State<'_, DbState>,
+    session: State<'_, SessionState>,
 ) -> AppResult<Option<VentaCompleta>> {
+    session.exigir(Permiso::VentaCrear)?;
     let conn = db.conn.lock().map_err(|e| {
         AppError::Interno(format!("Error de bloqueo de base de datos: {}", e))
     })?;
@@ -260,10 +281,13 @@ pub fn imprimir_ticket_mesa(
 pub fn cobrar_mesa(
     mesa_id: i64,
     metodo_pago: String,
-    importe_entregado: f64,
+    importe_entregado: i64,
     app: AppHandle,
     db: State<'_, DbState>,
+    session: State<'_, SessionState>,
 ) -> AppResult<String> {
+    session.exigir(Permiso::VentaCobrar)?;
+
     let conn = db.conn.lock().map_err(|e| {
         AppError::Interno(format!("Error de bloqueo de base de datos: {}", e))
     })?;
@@ -297,7 +321,9 @@ pub fn traspasar_comanda(
     mesa_origen_id: i64,
     mesa_destino_id: i64,
     db: State<'_, DbState>,
+    session: State<'_, SessionState>,
 ) -> AppResult<()> {
+    session.exigir(Permiso::VentaCrear)?;
     let conn = db.conn.lock().map_err(|e| {
         AppError::Interno(format!("Error de bloqueo de base de datos: {}", e))
     })?;
@@ -318,13 +344,14 @@ pub fn obtener_ventas_activas_mesa(
 #[tauri::command]
 pub fn crear_division_cuenta(
     mesa_id: i64,
-    usuario_id: i64,
     db: State<'_, DbState>,
+    session: State<'_, SessionState>,
 ) -> AppResult<VentaCompleta> {
+    let sesion = session.exigir(Permiso::VentaCrear)?;
     let conn = db.conn.lock().map_err(|e| {
         AppError::Interno(format!("Error de bloqueo de base de datos: {}", e))
     })?;
-    let venta_id = VentaRepo::crear_venta_abierta(&conn, mesa_id, usuario_id)?;
+    let venta_id = VentaRepo::crear_venta_abierta(&conn, mesa_id, sesion.usuario_id)?;
     VentaRepo::obtener_por_id(&conn, venta_id)
 }
 
@@ -334,7 +361,9 @@ pub fn mover_linea_comanda(
     venta_destino_id: i64,
     cantidad: f64,
     db: State<'_, DbState>,
+    session: State<'_, SessionState>,
 ) -> AppResult<()> {
+    session.exigir(Permiso::VentaCrear)?;
     let conn = db.conn.lock().map_err(|e| {
         AppError::Interno(format!("Error de bloqueo de base de datos: {}", e))
     })?;
@@ -345,10 +374,13 @@ pub fn mover_linea_comanda(
 pub fn cobrar_venta(
     venta_id: i64,
     metodo_pago: String,
-    importe_entregado: f64,
+    importe_entregado: i64,
     app: AppHandle,
     db: State<'_, DbState>,
+    session: State<'_, SessionState>,
 ) -> AppResult<String> {
+    session.exigir(Permiso::VentaCobrar)?;
+
     let conn = db.conn.lock().map_err(|e| {
         AppError::Interno(format!("Error de bloqueo de base de datos: {}", e))
     })?;
@@ -418,19 +450,30 @@ pub fn eliminar_venta_vacia(
 // ── CRUD Administración ──
 
 #[tauri::command]
-pub fn crear_zona(db: State<'_, DbState>, nueva: crate::models::mesa::NuevaZona) -> AppResult<Zona> {
+pub fn crear_zona(
+    db: State<'_, DbState>,
+    session: State<'_, SessionState>,
+    nueva: crate::models::mesa::NuevaZona,
+) -> AppResult<Zona> {
+    session.exigir(Permiso::ConfiguracionSistema)?;
     let conn = db.conn.lock().map_err(|e| AppError::Interno(e.to_string()))?;
     MesaRepo::crear_zona(&conn, &nueva)
 }
 
 #[tauri::command]
-pub fn eliminar_zona(db: State<'_, DbState>, id: i64) -> AppResult<()> {
+pub fn eliminar_zona(db: State<'_, DbState>, session: State<'_, SessionState>, id: i64) -> AppResult<()> {
+    session.exigir(Permiso::ConfiguracionSistema)?;
     let conn = db.conn.lock().map_err(|e| AppError::Interno(e.to_string()))?;
     MesaRepo::eliminar_zona(&conn, id)
 }
 
 #[tauri::command]
-pub fn crear_mesa(db: State<'_, DbState>, nueva: crate::models::mesa::NuevaMesa) -> AppResult<Mesa> {
+pub fn crear_mesa(
+    db: State<'_, DbState>,
+    session: State<'_, SessionState>,
+    nueva: crate::models::mesa::NuevaMesa,
+) -> AppResult<Mesa> {
+    session.exigir(Permiso::ConfiguracionSistema)?;
     let conn = db.conn.lock().map_err(|e| AppError::Interno(e.to_string()))?;
     MesaRepo::crear_mesa(&conn, &nueva)
 }
@@ -438,17 +481,20 @@ pub fn crear_mesa(db: State<'_, DbState>, nueva: crate::models::mesa::NuevaMesa)
 #[tauri::command]
 pub fn actualizar_config_mesa(
     db: State<'_, DbState>,
+    session: State<'_, SessionState>,
     id: i64,
     nombre: Option<String>,
     capacidad: Option<i32>,
     forma: Option<crate::models::common::FormaMesa>,
 ) -> AppResult<Mesa> {
+    session.exigir(Permiso::ConfiguracionSistema)?;
     let conn = db.conn.lock().map_err(|e| AppError::Interno(e.to_string()))?;
     MesaRepo::actualizar_config_mesa(&conn, id, nombre.as_deref(), capacidad, forma.as_ref())
 }
 
 #[tauri::command]
-pub fn eliminar_mesa(db: State<'_, DbState>, id: i64) -> AppResult<()> {
+pub fn eliminar_mesa(db: State<'_, DbState>, session: State<'_, SessionState>, id: i64) -> AppResult<()> {
+    session.exigir(Permiso::ConfiguracionSistema)?;
     let conn = db.conn.lock().map_err(|e| AppError::Interno(e.to_string()))?;
     MesaRepo::eliminar_mesa(&conn, id)
 }

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { api, type Ticket, type TipoTicket } from "../../lib/api";
+import { formatCentimos } from "../../lib/format";
 import { TicketDetailModal } from "./TicketDetailModal";
 import { Banknote, CreditCard, Layers, Receipt, CheckSquare, ClipboardList, RefreshCw, CircleDollarSign } from "lucide-react";
 import "./TicketsPanel.css";
@@ -115,7 +116,7 @@ export function TicketsPanel() {
           <span className="stat-icon"><CircleDollarSign size={24} /></span>
           <div className="stat-content">
             <span className="stat-label">Total facturado</span>
-            <h2 className="stat-value">{totalFacturado.toFixed(2)} €</h2>
+            <h2 className="stat-value">{formatCentimos(totalFacturado)}</h2>
           </div>
         </div>
       </div>
@@ -196,7 +197,7 @@ export function TicketsPanel() {
                   <td>
                     {t.tipo === "fiscal" ? etiquetaMetodo(t.metodo_pago) : <span className="text-muted">—</span>}
                   </td>
-                  <td className="ticket-total text-right">{t.total.toFixed(2)} €</td>
+                  <td className="ticket-total text-right">{formatCentimos(t.total)}</td>
                 </tr>
               ))}
 

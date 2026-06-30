@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { api, type Ticket, type TipoTicket } from "../../lib/api";
+import { formatCentimos } from "../../lib/format";
 import { FileText, ClipboardList, RefreshCw, Receipt, Settings } from "lucide-react";
 import { GenerarFacturaModal } from "./GenerarFacturaModal";
 import { SmtpConfigModal } from "./SmtpConfigModal";
@@ -145,7 +146,7 @@ export function FacturasPanel() {
                       {t.mesa_nombre ?? "Venta directa"}
                     </span>
                   </td>
-                  <td className="ticket-total text-right">{t.total.toFixed(2)} €</td>
+                  <td className="ticket-total text-right">{formatCentimos(t.total)}</td>
                   <td className="text-right">
                     <button 
                       className="btn btn-primary" 

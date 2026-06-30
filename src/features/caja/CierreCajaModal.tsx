@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import { formatCurrency } from "../../lib/format";
+import { formatCentimos, parseEurosACentimos } from "../../lib/format";
 import "./CajaPanel.css";
 
 interface CierreCajaModalProps {
@@ -17,8 +17,8 @@ export function CierreCajaModal({ efectivoEsperado, onClose, onConfirm }: Cierre
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const val = parseFloat(fondoFinal);
-    if (isNaN(val) || val < 0) {
+    const val = parseEurosACentimos(fondoFinal);
+    if (val === null || val < 0) {
       setError("Introduce el total de efectivo contado en caja.");
       return;
     }
@@ -33,9 +33,10 @@ export function CierreCajaModal({ efectivoEsperado, onClose, onConfirm }: Cierre
     }
   };
 
-  const valFondo = parseFloat(fondoFinal);
-  const descuadre = isNaN(valFondo) ? 0 : valFondo - efectivoEsperado;
-  const isDescuadre = Math.abs(descuadre) > 0.01;
+  // Importes en céntimos. `efectivoEsperado` viene en céntimos.
+  const valFondo = parseEurosACentimos(fondoFinal);
+  const descuadre = valFondo === null ? 0 : valFondo - efectivoEsperado;
+  const isDescuadre = Math.abs(descuadre) > 0;
 
   return (
     <div className="caja-modal-overlay">
@@ -69,15 +70,15 @@ export function CierreCajaModal({ efectivoEsperado, onClose, onConfirm }: Cierre
 
             <div className="caja-form-group">
               <label>Efectivo esperado por el sistema</label>
-              <div className="valor-estatico">{formatCurrency(efectivoEsperado)}</div>
+              <div className="valor-estatico">{formatCentimos(efectivoEsperado)}</div>
             </div>
           </div>
 
-          {!isNaN(valFondo) && isDescuadre && (
+          {valFondo !== null && isDescuadre && (
             <div className={`caja-descuadre-alert ${descuadre > 0 ? "sobrante" : "faltante"}`}>
               <strong>Descuadre detectado: </strong> 
               {descuadre > 0 ? "Sobran " : "Faltan "} 
-              {formatCurrency(Math.abs(descuadre))}
+              {formatCentimos(Math.abs(descuadre))}
             </div>
           )}
 

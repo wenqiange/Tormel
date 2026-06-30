@@ -5,7 +5,7 @@ import {
   ResumenCierre, 
   MovimientoCaja 
 } from "../../lib/api";
-import { formatCurrency, formatDateTime } from "../../lib/format";
+import { formatCentimos, formatDateTime, parseEurosACentimos } from "../../lib/format";
 import { useAuth } from "../../stores/authStore";
 import { MovimientoModal } from "./MovimientoModal";
 import { CierreCajaModal } from "./CierreCajaModal";
@@ -61,8 +61,8 @@ export function CajaPanel() {
     e.preventDefault();
     if (!usuario) return;
     
-    const val = parseFloat(fondoInicial);
-    if (isNaN(val) || val < 0) return;
+    const val = parseEurosACentimos(fondoInicial);
+    if (val === null || val < 0) return;
 
     try {
       await api.abrirTurno(usuario.usuario_id, { fondo_inicial: val });
@@ -150,20 +150,20 @@ export function CajaPanel() {
       <div className="caja-stats-grid">
         <div className="stat-card">
           <h3>Fondo Inicial</h3>
-          <div className="stat-value">{formatCurrency(turnoActivo.fondo_inicial)}</div>
+          <div className="stat-value">{formatCentimos(turnoActivo.fondo_inicial)}</div>
         </div>
         <div className="stat-card">
           <h3>Ventas Efectivo</h3>
-          <div className="stat-value text-green">+{formatCurrency(turnoActivo.total_efectivo)}</div>
+          <div className="stat-value text-green">+{formatCentimos(turnoActivo.total_efectivo)}</div>
         </div>
         <div className="stat-card">
           <h3>Ventas Tarjeta</h3>
-          <div className="stat-value text-blue">+{formatCurrency(turnoActivo.total_tarjeta)}</div>
+          <div className="stat-value text-blue">+{formatCentimos(turnoActivo.total_tarjeta)}</div>
         </div>
         <div className="stat-card highlight">
           <h3>Efectivo Esperado (Cajón)</h3>
           <div className="stat-value text-accent">
-            {resumen ? formatCurrency(resumen.efectivo_esperado) : "..."}
+            {resumen ? formatCentimos(resumen.efectivo_esperado) : "..."}
           </div>
         </div>
       </div>
@@ -213,7 +213,7 @@ export function CajaPanel() {
                     <span className="mov-time">{formatDateTime(m.created_at)}</span>
                   </div>
                   <div className={`mov-amount ${m.tipo === "entrada" ? "text-green" : "text-red"}`}>
-                    {m.tipo === "entrada" ? "+" : "-"}{formatCurrency(m.importe)}
+                    {m.tipo === "entrada" ? "+" : "-"}{formatCentimos(m.importe)}
                   </div>
                 </div>
               ))}

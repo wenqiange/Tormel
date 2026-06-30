@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { type SesionUsuario, type Rol } from "../lib/api";
+import { api, type SesionUsuario, type Rol } from "../lib/api";
 
 // ============================================================================
 // Auth Store — Estado de sesión del usuario
@@ -39,6 +39,9 @@ export function getRol(): Rol | null {
 }
 
 export function logout() {
+  // Cerrar también la sesión en el backend (fuente de verdad). Fire-and-forget:
+  // el estado local se limpia igualmente aunque la llamada falle.
+  void api.logout().catch(() => {});
   setSesion(null);
 }
 
@@ -64,6 +67,7 @@ export function useAuth() {
     isAuthenticated: globalAuthState.isAuthenticated,
     rol: globalAuthState.sesion?.rol ?? null,
     nombre: globalAuthState.sesion?.nombre ?? "",
+    pinPorDefecto: globalAuthState.sesion?.pin_por_defecto ?? false,
     login: setSesion,
     logout,
   };

@@ -33,6 +33,11 @@ const MIGRATIONS: &[Migration] = &[
         name: "tickets_historial",
         sql: include_str!("../../migrations/004_tickets_historial.sql"),
     },
+    Migration {
+        version: "005",
+        name: "money_to_centimos",
+        sql: include_str!("../../migrations/005_money_to_centimos.sql"),
+    },
 ];
 
 /// Ejecuta todas las migraciones pendientes.
@@ -48,6 +53,24 @@ pub fn run_migrations(conn: &Connection) -> AppResult<()> {
         );"
     )?;
 
+    // Las claves foráneas se desactivan durante las migraciones porque algunas
+    // (p. ej. la conversión de dinero a céntimos) reconstruyen tablas siguiendo
+    // el procedimiento recomendado por SQLite (crear nueva, copiar, borrar,
+    // renombrar), que requiere `foreign_keys=OFF`. Este PRAGMA no puede
+    // cambiarse dentro de una transacción, por eso se hace aquí, alrededor del
+    // bucle. Se reactivan al terminar para la operación normal.
+    conn.execute_batch("PRAGMA foreign_keys = OFF;")?;
+
+    let resultado = aplicar_migraciones(conn);
+
+    // Reactivar siempre las claves foráneas, haya ido bien o mal.
+    let reactivar = conn.execute_batch("PRAGMA foreign_keys = ON;");
+    resultado?;
+    reactivar?;
+    Ok(())
+}
+
+fn aplicar_migraciones(conn: &Connection) -> AppResult<()> {
     for migration in MIGRATIONS {
         let already_applied: bool = conn.query_row(
             "SELECT COUNT(*) > 0 FROM _migrations WHERE version = ?1",
@@ -61,8 +84,14 @@ pub fn run_migrations(conn: &Connection) -> AppResult<()> {
 
         info!("Aplicando migración {}: {}", migration.version, migration.name);
 
+        // Cada migración se aplica dentro de una transacción: o se aplica entera
+        // (incluido su registro en _migrations) o se revierte por completo. Esto
+        // evita dejar un esquema a medio aplicar e irrecuperable si una sentencia
+        // intermedia falla.
+        let tx = conn.unchecked_transaction()?;
+
         // Ejecutar la migración completa como batch
-        conn.execute_batch(migration.sql).map_err(|e| {
+        tx.execute_batch(migration.sql).map_err(|e| {
             AppError::Interno(format!(
                 "Error al aplicar migración {}: {}",
                 migration.version, e
@@ -70,18 +99,20 @@ pub fn run_migrations(conn: &Connection) -> AppResult<()> {
         })?;
 
         // Si la migración ya inserta en _migrations, no insertar de nuevo
-        let recorded: bool = conn.query_row(
+        let recorded: bool = tx.query_row(
             "SELECT COUNT(*) > 0 FROM _migrations WHERE version = ?1",
             [migration.version],
             |row| row.get(0),
         )?;
 
         if !recorded {
-            conn.execute(
+            tx.execute(
                 "INSERT INTO _migrations (version, nombre) VALUES (?1, ?2)",
                 rusqlite::params![migration.version, migration.name],
             )?;
         }
+
+        tx.commit()?;
 
         info!("Migración {} aplicada correctamente", migration.version);
     }

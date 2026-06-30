@@ -14,10 +14,11 @@ pub struct Venta {
     pub tipo: TipoVenta,
     pub estado: EstadoVenta,
     pub comensales: i32,
-    pub subtotal: f64,
-    pub total_descuento: f64,
-    pub total_iva: f64,
-    pub total: f64,
+    // Importes en céntimos enteros.
+    pub subtotal: i64,
+    pub total_descuento: i64,
+    pub total_iva: i64,
+    pub total: i64,
     pub notas: Option<String>,
     pub abierta_at: String,
     pub cerrada_at: Option<String>,
@@ -39,13 +40,15 @@ pub struct LineaVenta {
     pub venta_id: i64,
     pub producto_id: i64,
     pub producto_nombre: String,
-    pub producto_precio: f64,
+    /// Base imponible unitaria en céntimos.
+    pub producto_precio: i64,
     pub tipo_iva: f64,
     pub cantidad: f64,
     pub descuento_pct: f64,
-    pub subtotal: f64,
-    pub importe_iva: f64,
-    pub total: f64,
+    // Importes de línea en céntimos enteros.
+    pub subtotal: i64,
+    pub importe_iva: i64,
+    pub total: i64,
     pub notas: Option<String>,
     pub created_at: String,
     /// Modificadores aplicados a esta línea (se carga opcionalmente).
@@ -60,7 +63,8 @@ pub struct LineaModificador {
     pub linea_venta_id: i64,
     pub modificador_id: i64,
     pub nombre: String,
-    pub precio_extra: f64,
+    /// Suplemento en céntimos.
+    pub precio_extra: i64,
 }
 
 /// Pago asociado a una venta.
@@ -69,8 +73,9 @@ pub struct Pago {
     pub id: i64,
     pub venta_id: i64,
     pub metodo: MetodoPago,
-    pub importe: f64,
-    pub cambio: f64,
+    // Importes en céntimos.
+    pub importe: i64,
+    pub cambio: i64,
     pub referencia: Option<String>,
     pub created_at: String,
 }
@@ -111,7 +116,8 @@ pub struct NuevaLineaVenta {
 #[derive(Debug, Deserialize)]
 pub struct NuevoPago {
     pub metodo: MetodoPago,
-    pub importe: f64,
+    /// Importe en céntimos.
+    pub importe: i64,
     pub referencia: Option<String>,
 }
 
@@ -138,7 +144,8 @@ pub struct VentaCompleta {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DesgloseIva {
     pub tipo_iva: f64,
-    pub base_imponible: f64,
-    pub cuota_iva: f64,
-    pub total: f64,
+    // Importes en céntimos.
+    pub base_imponible: i64,
+    pub cuota_iva: i64,
+    pub total: i64,
 }

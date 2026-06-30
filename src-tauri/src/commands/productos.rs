@@ -1,4 +1,6 @@
 use tauri::State;
+use crate::auth::permissions::Permiso;
+use crate::auth::session::SessionState;
 use crate::db::connection::DbState;
 use crate::error::{AppError, AppResult};
 use crate::models::producto::{ActualizarProducto, NuevoProducto, Producto, Familia, GrupoModificadoresConElementos};
@@ -7,8 +9,10 @@ use crate::repositories::producto_repo::ProductoRepo;
 #[tauri::command]
 pub fn crear_producto(
     db: State<'_, DbState>,
+    session: State<'_, SessionState>,
     nuevo: NuevoProducto,
 ) -> AppResult<Producto> {
+    session.exigir(Permiso::ProductoGestionar)?;
     let conn = db.conn.lock().map_err(|e| AppError::Interno(format!("DB lock error: {}", e)))?;
     ProductoRepo::crear_producto(&conn, &nuevo)
 }
@@ -16,9 +20,11 @@ pub fn crear_producto(
 #[tauri::command]
 pub fn actualizar_producto(
     db: State<'_, DbState>,
+    session: State<'_, SessionState>,
     id: i64,
     actualizar: ActualizarProducto,
 ) -> AppResult<Producto> {
+    session.exigir(Permiso::ProductoGestionar)?;
     let conn = db.conn.lock().map_err(|e| AppError::Interno(format!("DB lock error: {}", e)))?;
     ProductoRepo::actualizar_producto(&conn, id, &actualizar)
 }
@@ -26,8 +32,10 @@ pub fn actualizar_producto(
 #[tauri::command]
 pub fn eliminar_producto(
     db: State<'_, DbState>,
+    session: State<'_, SessionState>,
     id: i64,
 ) -> AppResult<()> {
+    session.exigir(Permiso::ProductoGestionar)?;
     let conn = db.conn.lock().map_err(|e| AppError::Interno(format!("DB lock error: {}", e)))?;
     ProductoRepo::eliminar_producto(&conn, id)
 }
@@ -35,9 +43,11 @@ pub fn eliminar_producto(
 #[tauri::command]
 pub fn crear_familia(
     db: State<'_, DbState>,
+    session: State<'_, SessionState>,
     nombre: String,
     color: String,
 ) -> AppResult<Familia> {
+    session.exigir(Permiso::ProductoGestionar)?;
     let conn = db.conn.lock().map_err(|e| AppError::Interno(format!("DB lock error: {}", e)))?;
     ProductoRepo::crear_familia(&conn, &nombre, &color)
 }
@@ -45,8 +55,10 @@ pub fn crear_familia(
 #[tauri::command]
 pub fn eliminar_familia(
     db: State<'_, DbState>,
+    session: State<'_, SessionState>,
     id: i64,
 ) -> AppResult<()> {
+    session.exigir(Permiso::ProductoGestionar)?;
     let conn = db.conn.lock().map_err(|e| AppError::Interno(format!("DB lock error: {}", e)))?;
     ProductoRepo::eliminar_familia(&conn, id)
 }

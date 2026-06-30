@@ -10,7 +10,7 @@ vi.mock('@tauri-apps/api/core', () => ({
         {
           id: 1,
           numero: 'F-001',
-          total: 100.5,
+          total: 10050, // céntimos (= 100,50 €)
           abierta_at: '2026-06-29T10:00:00Z',
           hash_registro: 'A1B2C3D4E5F6',
           estado_verifactu: 'enviado',
@@ -58,6 +58,7 @@ describe('VerifactuPanel Component', () => {
     expect(screen.getByText('F-001')).toBeInTheDocument();
     expect(screen.getByText('A1B2C3D4E5F6')).toBeInTheDocument();
     expect(screen.getByText('enviado')).toBeInTheDocument();
-    expect(screen.getByText('100.50 €')).toBeInTheDocument();
+    // El importe se muestra formateado en euros desde céntimos (locale es-ES)
+    expect(screen.getByText((txt) => txt.replace(/\s/g, '').includes('100,50€'))).toBeInTheDocument();
   });
 });

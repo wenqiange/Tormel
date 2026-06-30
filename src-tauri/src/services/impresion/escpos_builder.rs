@@ -1,3 +1,4 @@
+use crate::dinero;
 use crate::models::venta::VentaCompleta;
 use crate::models::negocio::Negocio;
 
@@ -59,17 +60,19 @@ pub fn generar_ticket_texto(negocio: &Negocio, venta: &VentaCompleta) -> String 
         } else {
             linea.producto_nombre.clone()
         };
-        ticket.push_str(&format!("{:<20} {:>5.1} {:>6.2} {:>7.2}\n", 
-            nombre, linea.cantidad, linea.producto_precio, linea.total
+        ticket.push_str(&format!("{:<20} {:>5.1} {:>6} {:>7}\n", 
+            nombre, linea.cantidad,
+            dinero::formato_euros(linea.producto_precio),
+            dinero::formato_euros(linea.total)
         ));
     }
     
     ticket.push_str(&"-".repeat(width));
     ticket.push_str("\n");
     
-    ticket.push_str(&format!("{:<25} {:>14.2} €\n", "Subtotal:", venta.venta.subtotal));
-    ticket.push_str(&format!("{:<25} {:>14.2} €\n", "IVA:", venta.venta.total_iva));
-    ticket.push_str(&format!("{:<25} {:>14.2} €\n", "TOTAL:", venta.venta.total));
+    ticket.push_str(&format!("{:<25} {:>14} €\n", "Subtotal:", dinero::formato_euros(venta.venta.subtotal)));
+    ticket.push_str(&format!("{:<25} {:>14} €\n", "IVA:", dinero::formato_euros(venta.venta.total_iva)));
+    ticket.push_str(&format!("{:<25} {:>14} €\n", "TOTAL:", dinero::formato_euros(venta.venta.total)));
     ticket.push_str(&"=".repeat(width));
     ticket.push_str("\n");
 
@@ -137,18 +140,20 @@ pub fn generar_escpos_bytes(negocio: &Negocio, venta: &VentaCompleta) -> Vec<u8>
         } else {
             linea.producto_nombre.clone()
         };
-        bytes.extend_from_slice(format!("{:<20} {:>5.1} {:>6.2} {:>7.2}\n", 
-            nombre, linea.cantidad, linea.producto_precio, linea.total
+        bytes.extend_from_slice(format!("{:<20} {:>5.1} {:>6} {:>7}\n", 
+            nombre, linea.cantidad,
+            dinero::formato_euros(linea.producto_precio),
+            dinero::formato_euros(linea.total)
         ).as_bytes());
     }
 
     bytes.extend_from_slice(b"----------------------------------------\n");
-    bytes.extend_from_slice(format!("{:<25} {:>14.2} EUR\n", "Subtotal:", venta.venta.subtotal).as_bytes());
-    bytes.extend_from_slice(format!("{:<25} {:>14.2} EUR\n", "IVA:", venta.venta.total_iva).as_bytes());
+    bytes.extend_from_slice(format!("{:<25} {:>14} EUR\n", "Subtotal:", dinero::formato_euros(venta.venta.subtotal)).as_bytes());
+    bytes.extend_from_slice(format!("{:<25} {:>14} EUR\n", "IVA:", dinero::formato_euros(venta.venta.total_iva)).as_bytes());
     
     // Negrita para el total
     bytes.extend_from_slice(b"\x1b\x45\x01");
-    bytes.extend_from_slice(format!("{:<25} {:>14.2} EUR\n", "TOTAL:", venta.venta.total).as_bytes());
+    bytes.extend_from_slice(format!("{:<25} {:>14} EUR\n", "TOTAL:", dinero::formato_euros(venta.venta.total)).as_bytes());
     bytes.extend_from_slice(b"\x1b\x45\x00");
     bytes.extend_from_slice(b"========================================\n\n");
 

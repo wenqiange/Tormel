@@ -1,15 +1,19 @@
 use std::fs;
 use std::path::PathBuf;
-use tauri::{AppHandle, Manager};
+use tauri::{AppHandle, Manager, State};
+use crate::auth::permissions::Permiso;
+use crate::auth::session::SessionState;
 use crate::error::{AppError, AppResult};
 
 /// Guarda una imagen recibida en base64 en la carpeta de datos de la app.
 #[tauri::command]
 pub fn guardar_imagen_b64(
     app: AppHandle,
+    session: State<'_, SessionState>,
     nombre_archivo: String,
     base64_data: String,
 ) -> AppResult<String> {
+    session.exigir(Permiso::ProductoGestionar)?;
     let app_data_dir = app
         .path()
         .app_data_dir()
@@ -57,6 +61,15 @@ pub fn guardar_imagen_b64(
 /// Obtiene una imagen de la carpeta de datos de la app en formato base64.
 #[tauri::command]
 pub fn obtener_imagen_b64(app: AppHandle, nombre_archivo: String) -> AppResult<String> {
+    // Evitar path traversal: solo se permite un nombre de archivo simple, sin
+    // separadores de ruta ni referencias a directorios superiores.
+    if nombre_archivo.contains('/')
+        || nombre_archivo.contains('\\')
+        || nombre_archivo.contains("..")
+    {
+        return Err(AppError::Validation("Nombre de imagen no válido".into()));
+    }
+
     let app_data_dir = app
         .path()
         .app_data_dir()

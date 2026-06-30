@@ -5,6 +5,8 @@ use lettre::message::{header::ContentType, Attachment, MultiPart, SinglePart};
 use rusqlite::Connection;
 use serde::Deserialize;
 
+use crate::auth::permissions::Permiso;
+use crate::auth::session::SessionState;
 use crate::db::connection::DbState;
 use crate::error::{AppError, AppResult};
 
@@ -31,7 +33,14 @@ fn obtener_config_smtp(conn: &Connection) -> AppResult<Option<SmtpConfig>> {
     }
 
     if let Ok(config) = serde_json::from_str::<NegocioConfig>(&config_str) {
-        Ok(config.smtp)
+        match config.smtp {
+            Some(mut smtp) => {
+                // Descifrado transparente de la contraseña SMTP.
+                smtp.password = crate::services::secret_store::descifrar(&smtp.password)?;
+                Ok(Some(smtp))
+            }
+            None => Ok(None),
+        }
     } else {
         Ok(None)
     }
@@ -44,7 +53,9 @@ pub fn guardar_config_smtp(
     username: String,
     password: String,
     db: State<'_, DbState>,
+    session: State<'_, SessionState>,
 ) -> AppResult<()> {
+    session.exigir(Permiso::ConfiguracionSistema)?;
     let conn = db.conn.lock().map_err(|e| {
         AppError::Interno(format!("Error de bloqueo de BD: {}", e))
     })?;
@@ -56,12 +67,14 @@ pub fn guardar_config_smtp(
     )?;
 
     let mut config: serde_json::Value = serde_json::from_str(&config_str).unwrap_or_else(|_| serde_json::json!({}));
-    
+
+    // La contraseña SMTP se cifra antes de persistirse.
+    let password_cifrada = crate::services::secret_store::cifrar(&password)?;
     config["smtp"] = serde_json::json!({
         "server": server,
         "port": port,
         "username": username,
-        "password": password
+        "password": password_cifrada
     });
 
     conn.execute(
@@ -80,7 +93,9 @@ pub fn enviar_factura_email(
     pdf_bytes: Vec<u8>,
     filename: String,
     db: State<'_, DbState>,
+    session: State<'_, SessionState>,
 ) -> AppResult<()> {
+    session.exigir(Permiso::InformesVer)?;
     // 1. Obtener configuración
     let smtp_config = {
         let conn = db.conn.lock().map_err(|e| {

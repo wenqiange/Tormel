@@ -4,10 +4,10 @@
 -- Base de datos SQLite para TPV de hostelería.
 -- Todas las tablas, índices, triggers y datos semilla.
 -- ============================================================================
-
-PRAGMA journal_mode = WAL;
-PRAGMA foreign_keys = ON;
-PRAGMA busy_timeout = 5000;
+-- NOTA: los PRAGMA de conexión (journal_mode/foreign_keys/busy_timeout) se
+-- configuran en db::connection::configure_pragmas. No deben ir aquí porque las
+-- migraciones se ejecutan dentro de una transacción y journal_mode=WAL no puede
+-- cambiarse dentro de una transacción.
 
 -- ============================================================================
 -- NEGOCIO (Configuración del establecimiento)

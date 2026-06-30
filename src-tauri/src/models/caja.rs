@@ -6,13 +6,14 @@ use super::common::{EstadoTurno, TipoMovimiento};
 pub struct TurnoCaja {
     pub id: i64,
     pub usuario_id: i64,
-    pub fondo_inicial: f64,
-    pub fondo_final: Option<f64>,
-    pub total_efectivo: f64,
-    pub total_tarjeta: f64,
-    pub total_otros: f64,
+    // Importes en céntimos enteros.
+    pub fondo_inicial: i64,
+    pub fondo_final: Option<i64>,
+    pub total_efectivo: i64,
+    pub total_tarjeta: i64,
+    pub total_otros: i64,
     pub total_ventas: i64,
-    pub diferencia: Option<f64>,
+    pub diferencia: Option<i64>,
     pub estado: EstadoTurno,
     pub notas: Option<String>,
     pub abierto_at: String,
@@ -26,7 +27,8 @@ pub struct MovimientoCaja {
     pub turno_id: i64,
     pub usuario_id: i64,
     pub tipo: TipoMovimiento,
-    pub importe: f64,
+    /// Importe en céntimos.
+    pub importe: i64,
     pub concepto: String,
     pub created_at: String,
 }
@@ -36,13 +38,15 @@ pub struct MovimientoCaja {
 /// DTO para abrir un turno de caja.
 #[derive(Debug, Deserialize)]
 pub struct AbrirTurno {
-    pub fondo_inicial: f64,
+    /// Fondo inicial en céntimos.
+    pub fondo_inicial: i64,
 }
 
 /// DTO para cerrar un turno de caja.
 #[derive(Debug, Deserialize)]
 pub struct CerrarTurno {
-    pub fondo_final: f64,
+    /// Fondo final en céntimos.
+    pub fondo_final: i64,
     pub notas: Option<String>,
 }
 
@@ -50,7 +54,8 @@ pub struct CerrarTurno {
 #[derive(Debug, Deserialize)]
 pub struct NuevoMovimiento {
     pub tipo: TipoMovimiento,
-    pub importe: f64,
+    /// Importe en céntimos.
+    pub importe: i64,
     pub concepto: String,
 }
 
@@ -58,13 +63,14 @@ pub struct NuevoMovimiento {
 #[derive(Debug, Clone, Serialize)]
 pub struct ResumenCierre {
     pub turno: TurnoCaja,
-    pub total_efectivo_ventas: f64,
-    pub total_tarjeta_ventas: f64,
-    pub total_otros_ventas: f64,
-    pub total_entradas_caja: f64,
-    pub total_salidas_caja: f64,
-    pub efectivo_esperado: f64,
-    pub diferencia: f64,
+    // Importes en céntimos enteros.
+    pub total_efectivo_ventas: i64,
+    pub total_tarjeta_ventas: i64,
+    pub total_otros_ventas: i64,
+    pub total_entradas_caja: i64,
+    pub total_salidas_caja: i64,
+    pub efectivo_esperado: i64,
+    pub diferencia: i64,
     pub num_ventas: i64,
     pub nombre_usuario: String,
 }

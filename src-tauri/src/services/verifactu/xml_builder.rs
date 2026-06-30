@@ -1,3 +1,4 @@
+use crate::dinero;
 use crate::models::venta::VentaCompleta;
 use chrono::DateTime;
 use quick_xml::escape::escape;
@@ -28,8 +29,8 @@ pub fn build_alta_factura_xml(
         "F2" // Factura simplificada (Ticket)
     };
 
-    let cuota_total = format!("{:.2}", venta.venta.total_iva);
-    let importe_total = format!("{:.2}", venta.venta.total);
+    let cuota_total = dinero::formato_euros(venta.venta.total_iva);
+    let importe_total = dinero::formato_euros(venta.venta.total);
 
     // Formatear el XML SOAP Envelope
     // Basado en el WSDL de VeriFactu - Suministro de Alta

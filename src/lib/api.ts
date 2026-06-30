@@ -29,6 +29,8 @@ export interface SesionUsuario {
   usuario_id: number;
   nombre: string;
   rol: Rol;
+  /// `true` si el usuario sigue usando el PIN por defecto y debería cambiarlo.
+  pin_por_defecto?: boolean;
 }
 
 export interface TurnoCaja {
@@ -402,6 +404,9 @@ export const api = {
   // --- Usuarios ---
   login: (usuarioId: number, pin: string) =>
     invoke<SesionUsuario>("login", { usuarioId, pin }),
+
+  // Cierra la sesión en el backend (que es la fuente de verdad de identidad y permisos).
+  logout: () => invoke<void>("logout"),
 
   esPrimeraEjecucion: () => invoke<boolean>("es_primera_ejecucion"),
 

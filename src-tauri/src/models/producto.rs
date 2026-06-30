@@ -20,7 +20,8 @@ pub struct Producto {
     pub familia_id: i64,
     pub nombre: String,
     pub codigo: Option<String>,
-    pub precio: f64,
+    /// PVP (IVA incluido) en céntimos.
+    pub precio: i64,
     pub tipo_iva: f64,
     pub imagen_path: Option<String>,
     pub activo: bool,
@@ -47,7 +48,8 @@ pub struct Modificador {
     pub id: i64,
     pub grupo_id: i64,
     pub nombre: String,
-    pub precio_extra: f64,
+    /// Suplemento (IVA incluido) en céntimos.
+    pub precio_extra: i64,
     pub orden: i32,
     pub activo: bool,
     pub created_at: String,
@@ -69,7 +71,8 @@ pub struct NuevoProducto {
     pub familia_id: i64,
     pub nombre: String,
     pub codigo: Option<String>,
-    pub precio: f64,
+    /// PVP (IVA incluido) en céntimos.
+    pub precio: i64,
     pub tipo_iva: f64,
     pub imagen_path: Option<String>,
     pub orden: Option<i32>,
@@ -80,7 +83,8 @@ pub struct ActualizarProducto {
     pub nombre: Option<String>,
     pub familia_id: Option<i64>,
     pub codigo: Option<String>,
-    pub precio: Option<f64>,
+    /// PVP (IVA incluido) en céntimos.
+    pub precio: Option<i64>,
     pub tipo_iva: Option<f64>,
     pub imagen_path: Option<String>,
     pub activo: Option<bool>,

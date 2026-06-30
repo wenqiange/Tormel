@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api, type VentaCompleta } from "../../lib/api";
+import { formatCentimos } from "../../lib/format";
 import { CircleDollarSign, Banknote, CreditCard, Receipt, RefreshCw, Layers } from "lucide-react";
 import "./VentasPanel.css";
 
@@ -66,7 +67,7 @@ export function VentasPanel() {
           <span className="stat-icon"><CircleDollarSign size={24} /></span>
           <div className="stat-content">
             <span className="stat-label">Total Cobrado Hoy</span>
-            <h2 className="stat-value">{totalCobrado.toFixed(2)} €</h2>
+            <h2 className="stat-value">{formatCentimos(totalCobrado)}</h2>
           </div>
         </div>
 
@@ -74,7 +75,7 @@ export function VentasPanel() {
           <span className="stat-icon"><Banknote size={24} /></span>
           <div className="stat-content">
             <span className="stat-label">Caja (Efectivo)</span>
-            <h2 className="stat-value">{totalEfectivo.toFixed(2)} €</h2>
+            <h2 className="stat-value">{formatCentimos(totalEfectivo)}</h2>
           </div>
         </div>
 
@@ -82,7 +83,7 @@ export function VentasPanel() {
           <span className="stat-icon"><CreditCard size={24} /></span>
           <div className="stat-content">
             <span className="stat-label">Tarjeta bancaria</span>
-            <h2 className="stat-value">{totalTarjeta.toFixed(2)} €</h2>
+            <h2 className="stat-value">{formatCentimos(totalTarjeta)}</h2>
           </div>
         </div>
 
@@ -150,7 +151,7 @@ export function VentasPanel() {
                     {v.pagos.length === 0 && <span className="pago-method-badge text-muted">Sin pago</span>}
                   </td>
                   <td className="venta-total-amount text-right">
-                    {v.total.toFixed(2)} €
+                    {formatCentimos(v.total)}
                   </td>
                 </tr>
               ))}

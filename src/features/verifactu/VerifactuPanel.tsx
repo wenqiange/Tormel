@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { formatCentimos } from "../../lib/format";
 import "./VerifactuPanel.css";
 import { ConfigVerifactuModal } from "./ConfigVerifactuModal";
 
@@ -145,7 +146,7 @@ export function VerifactuPanel() {
                     <tr key={v.id}>
                       <td>{v.numero || "SINFAC"}</td>
                       <td>{formatearFecha(v.abierta_at)}</td>
-                      <td>{v.total.toFixed(2)} €</td>
+                      <td>{formatCentimos(v.total)}</td>
                       <td>
                         <span className={`badge ${v.estado_verifactu === 'enviado' ? 'badge-success' : 'badge-warning'}`}>
                           {v.estado_verifactu || "pendiente"}

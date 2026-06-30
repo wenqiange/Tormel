@@ -1,6 +1,7 @@
 import { QRCodeSVG } from "qrcode.react";
 import { Printer } from "lucide-react";
 import type { Ticket } from "../../lib/api";
+import { formatCentimos } from "../../lib/format";
 import "./TicketDetailModal.css";
 
 interface TicketDetailModalProps {
@@ -90,9 +91,9 @@ export function TicketDetailModal({ ticket, onClose }: TicketDetailModalProps) {
                 <span className="rl-qty">{l.cantidad}</span>
                 <span className="rl-name">
                   {l.producto_nombre}
-                  <small>{l.precio_unitario.toFixed(2)} €/u</small>
+                  <small>{formatCentimos(l.precio_unitario)}/u</small>
                 </span>
-                <span className="rl-total">{l.total.toFixed(2)} €</span>
+                <span className="rl-total">{formatCentimos(l.total)}</span>
               </div>
             ))}
             {ticket.lineas.length === 0 && (
@@ -105,15 +106,15 @@ export function TicketDetailModal({ ticket, onClose }: TicketDetailModalProps) {
           <div className="receipt-totals">
             <div className="receipt-total-row">
               <span>Base imponible</span>
-              <span>{ticket.subtotal.toFixed(2)} €</span>
+              <span>{formatCentimos(ticket.subtotal)}</span>
             </div>
             <div className="receipt-total-row">
               <span>IVA</span>
-              <span>{ticket.total_iva.toFixed(2)} €</span>
+              <span>{formatCentimos(ticket.total_iva)}</span>
             </div>
             <div className="receipt-total-row receipt-total-grand">
               <span>TOTAL</span>
-              <span>{ticket.total.toFixed(2)} €</span>
+              <span>{formatCentimos(ticket.total)}</span>
             </div>
             {esFiscal && (
               <div className="receipt-total-row">

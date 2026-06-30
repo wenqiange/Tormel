@@ -1,5 +1,7 @@
 use sha2::{Sha256, Digest};
-use chrono::{DateTime, Local};
+use chrono::DateTime;
+
+use crate::dinero;
 
 /// Calcula la huella del registro de alta de factura (TicketBAI / VeriFactu) y su hash SHA-256.
 ///
@@ -16,8 +18,8 @@ pub fn calcular_huella(
     num_serie_factura: &str,
     fecha_expedicion_iso: &str, // Esperamos ISO 8601 o similar
     tipo_factura: &str, // ej: "F2" (Ticket / Factura simplificada)
-    cuota_total: f64,
-    importe_total: f64,
+    cuota_total: i64,    // céntimos
+    importe_total: i64,  // céntimos
     hash_anterior: Option<&str>,
 ) -> (String, String) {
     // Formatear Fecha: Extraer DD-MM-YYYY
@@ -36,8 +38,8 @@ pub fn calcular_huella(
     };
 
     // Formatear numéricos a 2 decimales usando punto como separador
-    let cuota_str = format!("{:.2}", cuota_total);
-    let importe_str = format!("{:.2}", importe_total);
+    let cuota_str = dinero::formato_euros(cuota_total);
+    let importe_str = dinero::formato_euros(importe_total);
 
     // Concatenación exacta exigida por la normativa
     let mut huella = format!(
@@ -68,7 +70,7 @@ pub fn generar_url_qr(
     nif_emisor: &str,
     num_serie_factura: &str,
     fecha_expedicion_iso: &str,
-    importe_total: f64,
+    importe_total: i64, // céntimos
 ) -> String {
     let fecha = if let Ok(dt) = DateTime::parse_from_rfc3339(fecha_expedicion_iso) {
         dt.format("%d-%m-%Y").to_string()
@@ -76,7 +78,7 @@ pub fn generar_url_qr(
         "01-01-2000".to_string()
     };
     
-    let importe_str = format!("{:.2}", importe_total);
+    let importe_str = dinero::formato_euros(importe_total);
 
 // Estructura base de la URL según la especificación técnica de la AEAT
     format!(
@@ -96,8 +98,8 @@ mod tests {
             "FAC-001",
             "2026-06-29T10:00:00+02:00",
             "F1",
-            21.00,
-            121.00,
+            2100,
+            12100,
             None
         );
         
@@ -121,8 +123,8 @@ mod tests {
             "TICK-002",
             "2026-06-29T10:05:00+02:00",
             "F2",
-            2.10,
-            12.10,
+            210,
+            1210,
             Some(hash_previo)
         );
         

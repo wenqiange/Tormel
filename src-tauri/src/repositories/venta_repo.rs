@@ -1,6 +1,6 @@
 use rusqlite::{params, Connection, OptionalExtension};
-use std::str::FromStr;
 
+use crate::dinero;
 use crate::error::{AppError, AppResult};
 use crate::models::venta::{Venta, LineaVenta, Pago, VentaCompleta, LineaModificador};
 use crate::models::common::{EstadoMesa, EstadoVenta, TipoVenta, MetodoPago};
@@ -111,7 +111,7 @@ impl VentaRepo {
         // Crear la venta
         conn.execute(
             "INSERT INTO venta (mesa_id, usuario_id, turno_id, tipo, estado, comensales, subtotal, total_descuento, total_iva, total)
-             VALUES (?1, ?2, ?3, 'mesa', 'abierta', 1, 0.0, 0.0, 0.0, 0.0)",
+             VALUES (?1, ?2, ?3, 'mesa', 'abierta', 1, 0, 0, 0, 0)",
             params![mesa_id, usuario_id, turno_id],
         )?;
 
@@ -125,28 +125,28 @@ impl VentaRepo {
         venta_id: i64,
         producto_id: i64,
         cantidad_delta: f64,
-        precio_personalizado: Option<f64>,
+        precio_personalizado: Option<i64>,
     ) -> AppResult<()> {
         let producto = ProductoRepo::obtener_por_id(conn, producto_id)?;
+        let iva_pct = dinero::iva_pct_entero(producto.tipo_iva);
 
-        // Verificar si la línea ya existe para este producto en esta venta
-        let linea_opt: Option<(i64, f64, f64)> = conn.query_row(
+        // Verificar si la línea ya existe para este producto en esta venta.
+        // `producto_precio` es el PVP bruto unitario en céntimos.
+        let linea_opt: Option<(i64, f64, i64)> = conn.query_row(
             "SELECT id, cantidad, producto_precio FROM linea_venta WHERE venta_id = ?1 AND producto_id = ?2",
             params![venta_id, producto_id],
             |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?))
         ).optional()?;
 
-        if let Some((linea_id, cantidad_actual, precio_base_existente)) = linea_opt {
+        if let Some((linea_id, cantidad_actual, pvp_existente)) = linea_opt {
             let nueva_cantidad = cantidad_actual + cantidad_delta;
             if nueva_cantidad <= 0.0 {
                 // Eliminar línea si la cantidad llega a cero o menos
                 conn.execute("DELETE FROM linea_venta WHERE id = ?1", params![linea_id])?;
             } else {
-                // Actualizar cantidad e importes usando el precio que ya tenía
-                let tipo_iva = producto.tipo_iva;
-                let subtotal = precio_base_existente * nueva_cantidad;
-                let importe_iva = subtotal * (tipo_iva / 100.0);
-                let total = subtotal + importe_iva;
+                // Actualizar cantidad e importes usando el PVP que ya tenía
+                let (subtotal, importe_iva, total) =
+                    dinero::desglose_linea(pvp_existente, nueva_cantidad, iva_pct);
 
                 conn.execute(
                     "UPDATE linea_venta 
@@ -158,12 +158,8 @@ impl VentaRepo {
         } else if cantidad_delta > 0.0 {
             // Crear nueva línea
             let pvp = precio_personalizado.unwrap_or(producto.precio);
-            let tipo_iva = producto.tipo_iva;
-            let precio_base = pvp / (1.0 + tipo_iva / 100.0);
-            
-            let subtotal = precio_base * cantidad_delta;
-            let importe_iva = subtotal * (tipo_iva / 100.0);
-            let total = subtotal + importe_iva;
+            let (subtotal, importe_iva, total) =
+                dinero::desglose_linea(pvp, cantidad_delta, iva_pct);
 
             conn.execute(
                 "INSERT INTO linea_venta (venta_id, producto_id, producto_nombre, producto_precio, tipo_iva, cantidad, descuento_pct, subtotal, importe_iva, total)
@@ -172,8 +168,8 @@ impl VentaRepo {
                     venta_id,
                     producto_id,
                     producto.nombre,
-                    precio_base,
-                    tipo_iva,
+                    pvp,
+                    producto.tipo_iva,
                     cantidad_delta,
                     subtotal,
                     importe_iva,
@@ -203,19 +199,16 @@ impl VentaRepo {
         }
 
         let producto = ProductoRepo::obtener_por_id(conn, producto_id)?;
+        let iva_pct = dinero::iva_pct_entero(producto.tipo_iva);
 
-        // Rescatar el precio base que tiene la línea actualmente, para no pisarlo
-        let precio_base: f64 = conn.query_row(
+        // Rescatar el PVP bruto unitario (céntimos) que tiene la línea, para no pisarlo
+        let pvp: i64 = conn.query_row(
             "SELECT producto_precio FROM linea_venta WHERE venta_id = ?1 AND producto_id = ?2",
             params![venta_id, producto_id],
             |row| row.get(0)
-        ).unwrap_or_else(|_| producto.precio / (1.0 + producto.tipo_iva / 100.0));
-        
-        let tipo_iva = producto.tipo_iva;
-        
-        let subtotal = precio_base * cantidad;
-        let importe_iva = subtotal * (tipo_iva / 100.0);
-        let total = subtotal + importe_iva;
+        ).unwrap_or(producto.precio);
+
+        let (subtotal, importe_iva, total) = dinero::desglose_linea(pvp, cantidad, iva_pct);
 
         let rows = conn.execute(
             "UPDATE linea_venta 
@@ -239,28 +232,24 @@ impl VentaRepo {
         conn: &Connection,
         venta_id: i64,
         producto_id: i64,
-        nuevo_pvp: f64,
+        nuevo_pvp: i64,
     ) -> AppResult<()> {
         let producto = ProductoRepo::obtener_por_id(conn, producto_id)?;
-        
+        let iva_pct = dinero::iva_pct_entero(producto.tipo_iva);
+
         let cantidad: f64 = conn.query_row(
             "SELECT cantidad FROM linea_venta WHERE venta_id = ?1 AND producto_id = ?2",
             params![venta_id, producto_id],
             |row| row.get(0)
         )?;
 
-        let tipo_iva = producto.tipo_iva;
-        let precio_base = nuevo_pvp / (1.0 + tipo_iva / 100.0);
-        
-        let subtotal = precio_base * cantidad;
-        let importe_iva = subtotal * (tipo_iva / 100.0);
-        let total = subtotal + importe_iva;
+        let (subtotal, importe_iva, total) = dinero::desglose_linea(nuevo_pvp, cantidad, iva_pct);
 
         let rows = conn.execute(
             "UPDATE linea_venta 
              SET producto_precio = ?1, subtotal = ?2, importe_iva = ?3, total = ?4 
              WHERE venta_id = ?5 AND producto_id = ?6",
-            params![precio_base, subtotal, importe_iva, total, venta_id, producto_id],
+            params![nuevo_pvp, subtotal, importe_iva, total, venta_id, producto_id],
         )?;
 
         if rows > 0 {
@@ -304,14 +293,30 @@ impl VentaRepo {
         conn: &Connection,
         venta_id: i64,
         metodo_pago: &str,
-        importe_entregado: f64,
+        importe_entregado: i64,
+    ) -> AppResult<String> {
+        // Toda la secuencia de cobro (numeración fiscal, cierre de venta, pago,
+        // actualización de caja y ticket) debe ser atómica: o se aplica entera o
+        // no se aplica nada. Si algo falla, el rollback impide quemar un número
+        // de factura o registrar un pago sin cerrar la venta.
+        let tx = conn.unchecked_transaction()?;
+        let qr_data = Self::cobrar_venta_inner(&tx, venta_id, metodo_pago, importe_entregado)?;
+        tx.commit()?;
+        Ok(qr_data)
+    }
+
+    fn cobrar_venta_inner(
+        conn: &Connection,
+        venta_id: i64,
+        metodo_pago: &str,
+        importe_entregado: i64,
     ) -> AppResult<String> {
         let venta_completa = Self::obtener_por_id(conn, venta_id)?;
         
         let total_venta = venta_completa.venta.total;
         let mesa_id = venta_completa.venta.mesa_id;
 
-        if total_venta <= 0.0 {
+        if total_venta <= 0 {
             return Err(AppError::Validation("No se puede cobrar una cuenta con total de 0.00€".into()));
         }
 
@@ -382,7 +387,7 @@ impl VentaRepo {
         let cambio = if metodo_pago == "efectivo" && importe_entregado > total_venta {
             importe_entregado - total_venta
         } else {
-            0.0
+            0
         };
 
         conn.execute(
@@ -591,8 +596,8 @@ impl VentaRepo {
 
     /// Recalcula los acumulados monetarios de una venta en base a sus líneas.
     pub fn actualizar_totales(conn: &Connection, venta_id: i64) -> AppResult<()> {
-        let (sum_subtotal, sum_iva, sum_total): (f64, f64, f64) = conn.query_row(
-            "SELECT COALESCE(SUM(subtotal), 0.0), COALESCE(SUM(importe_iva), 0.0), COALESCE(SUM(total), 0.0)
+        let (sum_subtotal, sum_iva, sum_total): (i64, i64, i64) = conn.query_row(
+            "SELECT COALESCE(SUM(subtotal), 0), COALESCE(SUM(importe_iva), 0), COALESCE(SUM(total), 0)
              FROM linea_venta WHERE venta_id = ?1",
             [venta_id],
             |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?))
@@ -694,12 +699,28 @@ impl VentaRepo {
         venta_destino_id: i64,
         cantidad_a_mover: f64,
     ) -> AppResult<()> {
-        // 1. Obtener la línea de origen
-        let (venta_origen_id, producto_id, producto_nombre, producto_precio, tipo_iva, cantidad_actual, descuento_pct, notas): (i64, i64, String, f64, f64, f64, f64, Option<String>) = conn.query_row(
+        let tx = conn.unchecked_transaction()?;
+        Self::mover_linea_comanda_inner(&tx, linea_id, venta_destino_id, cantidad_a_mover)?;
+        tx.commit()?;
+        Ok(())
+    }
+
+    /// Variante interna sin transacción propia, para poder componerse dentro de
+    /// otras operaciones ya transaccionadas (p. ej. `traspasar_comanda`).
+    fn mover_linea_comanda_inner(
+        conn: &Connection,
+        linea_id: i64,
+        venta_destino_id: i64,
+        cantidad_a_mover: f64,
+    ) -> AppResult<()> {
+        // 1. Obtener la línea de origen (producto_precio = PVP bruto unitario en céntimos)
+        let (venta_origen_id, producto_id, producto_nombre, producto_precio, tipo_iva, cantidad_actual, descuento_pct, notas): (i64, i64, String, i64, f64, f64, f64, Option<String>) = conn.query_row(
             "SELECT venta_id, producto_id, producto_nombre, producto_precio, tipo_iva, cantidad, descuento_pct, notas FROM linea_venta WHERE id = ?1",
             [linea_id],
             |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?, row.get(4)?, row.get(5)?, row.get(6)?, row.get(7)?))
         )?;
+
+        let iva_pct = dinero::iva_pct_entero(tipo_iva);
 
         if cantidad_a_mover <= 0.0 || cantidad_a_mover > cantidad_actual {
             return Err(AppError::Validation("Cantidad a mover inválida".into()));
@@ -709,7 +730,7 @@ impl VentaRepo {
         let mut stmt = conn.prepare(
             "SELECT modificador_id, nombre, precio_extra FROM linea_modificador WHERE linea_venta_id = ?1 ORDER BY modificador_id"
         )?;
-        let mods: Vec<(i64, String, f64)> = stmt.query_map([linea_id], |row| {
+        let mods: Vec<(i64, String, i64)> = stmt.query_map([linea_id], |row| {
             Ok((row.get(0)?, row.get(1)?, row.get(2)?))
         })?.collect::<Result<Vec<_>, _>>()?;
 
@@ -729,7 +750,7 @@ impl VentaRepo {
             let mut stmt_m = conn.prepare(
                 "SELECT modificador_id, nombre, precio_extra FROM linea_modificador WHERE linea_venta_id = ?1 ORDER BY modificador_id"
             )?;
-            let d_mods: Vec<(i64, String, f64)> = stmt_m.query_map([d_linea_id], |row| {
+            let d_mods: Vec<(i64, String, i64)> = stmt_m.query_map([d_linea_id], |row| {
                 Ok((row.get(0)?, row.get(1)?, row.get(2)?))
             })?.collect::<Result<Vec<_>, _>>()?;
 
@@ -748,9 +769,8 @@ impl VentaRepo {
                 |row| row.get(0)
             )?;
             let nueva_cant_dest = d_cant + cantidad_a_mover;
-            let subtotal = producto_precio * nueva_cant_dest;
-            let importe_iva = subtotal * (tipo_iva / 100.0);
-            let total = subtotal + importe_iva;
+            let (subtotal, importe_iva, total) =
+                dinero::desglose_linea(producto_precio, nueva_cant_dest, iva_pct);
 
             conn.execute(
                 "UPDATE linea_venta SET cantidad = ?1, subtotal = ?2, importe_iva = ?3, total = ?4 WHERE id = ?5",
@@ -762,9 +782,8 @@ impl VentaRepo {
                 conn.execute("DELETE FROM linea_venta WHERE id = ?1", [linea_id])?;
             } else {
                 let nueva_cant_orig = cantidad_actual - cantidad_a_mover;
-                let subtotal_orig = producto_precio * nueva_cant_orig;
-                let importe_iva_orig = subtotal_orig * (tipo_iva / 100.0);
-                let total_orig = subtotal_orig + importe_iva_orig;
+                let (subtotal_orig, importe_iva_orig, total_orig) =
+                    dinero::desglose_linea(producto_precio, nueva_cant_orig, iva_pct);
                 conn.execute(
                     "UPDATE linea_venta SET cantidad = ?1, subtotal = ?2, importe_iva = ?3, total = ?4 WHERE id = ?5",
                     params![nueva_cant_orig, subtotal_orig, importe_iva_orig, total_orig, linea_id]
@@ -781,18 +800,16 @@ impl VentaRepo {
             } else {
                 // Reducir línea origen
                 let nueva_cant_orig = cantidad_actual - cantidad_a_mover;
-                let subtotal_orig = producto_precio * nueva_cant_orig;
-                let importe_iva_orig = subtotal_orig * (tipo_iva / 100.0);
-                let total_orig = subtotal_orig + importe_iva_orig;
+                let (subtotal_orig, importe_iva_orig, total_orig) =
+                    dinero::desglose_linea(producto_precio, nueva_cant_orig, iva_pct);
                 conn.execute(
                     "UPDATE linea_venta SET cantidad = ?1, subtotal = ?2, importe_iva = ?3, total = ?4 WHERE id = ?5",
                     params![nueva_cant_orig, subtotal_orig, importe_iva_orig, total_orig, linea_id]
                 )?;
 
                 // Crear nueva línea en venta_destino
-                let subtotal_dest = producto_precio * cantidad_a_mover;
-                let importe_iva_dest = subtotal_dest * (tipo_iva / 100.0);
-                let total_dest = subtotal_dest + importe_iva_dest;
+                let (subtotal_dest, importe_iva_dest, total_dest) =
+                    dinero::desglose_linea(producto_precio, cantidad_a_mover, iva_pct);
 
                 conn.execute(
                     "INSERT INTO linea_venta (venta_id, producto_id, producto_nombre, producto_precio, tipo_iva, cantidad, descuento_pct, subtotal, importe_iva, total, notas)
@@ -836,6 +853,17 @@ impl VentaRepo {
         mesa_origen_id: i64,
         mesa_destino_id: i64,
     ) -> AppResult<()> {
+        let tx = conn.unchecked_transaction()?;
+        Self::traspasar_comanda_inner(&tx, mesa_origen_id, mesa_destino_id)?;
+        tx.commit()?;
+        Ok(())
+    }
+
+    fn traspasar_comanda_inner(
+        conn: &Connection,
+        mesa_origen_id: i64,
+        mesa_destino_id: i64,
+    ) -> AppResult<()> {
         let ventas_origen = Self::obtener_activas_por_mesa(conn, mesa_origen_id)?;
         if ventas_origen.is_empty() {
             return Err(AppError::Validation("La mesa de origen no tiene comandas activas".into()));
@@ -873,7 +901,7 @@ impl VentaRepo {
 
             for vo in ventas_origen {
                 for linea in vo.lineas {
-                    Self::mover_linea_comanda(conn, linea.id, vd_first_id, linea.cantidad)?;
+                    Self::mover_linea_comanda_inner(conn, linea.id, vd_first_id, linea.cantidad)?;
                 }
                 // Borrar la venta de origen vacía
                 conn.execute("DELETE FROM venta WHERE id = ?1", [vo.venta.id])?;

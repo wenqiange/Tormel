@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { api, Familia, Producto } from "../../lib/api";
 import { ProductoFormModal } from "./ProductoFormModal";
-import { formatCurrency } from "../../lib/format";
+import { formatCentimos } from "../../lib/format";
 import { useDialog } from "../../context/DialogContext";
 import { Image as ImageIcon, Trash2, Plus } from "lucide-react";
 import "./ProductosPanel.css";
@@ -160,7 +160,7 @@ export function ProductosPanel() {
               </div>
               <div className="producto-info">
                 <h4 className="producto-nombre" title={p.nombre}>{p.nombre}</h4>
-                <div className="producto-precio">{formatCurrency(p.precio)}</div>
+                <div className="producto-precio">{formatCentimos(p.precio)}</div>
               </div>
             </div>
           ))}

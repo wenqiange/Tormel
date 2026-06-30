@@ -2,6 +2,8 @@ use tauri::State;
 use rusqlite::Connection;
 use serde::{Deserialize, Serialize};
 
+use crate::auth::permissions::Permiso;
+use crate::auth::session::SessionState;
 use crate::db::connection::DbState;
 use crate::error::{AppError, AppResult};
 use crate::models::negocio::{Negocio, ActualizarNegocio};
@@ -34,7 +36,18 @@ pub fn obtener_config_verifactu_interna(conn: &Connection) -> AppResult<Option<V
     }
 
     if let Ok(config) = serde_json::from_str::<NegocioConfig>(&config_str) {
-        Ok(config.verifactu)
+        match config.verifactu {
+            Some(mut cfg) => {
+                // Descifrado transparente de los secretos (cert + contraseña).
+                cfg.certificado_b64 = crate::services::secret_store::descifrar_opcional(
+                    cfg.certificado_b64.as_deref(),
+                )?;
+                cfg.password =
+                    crate::services::secret_store::descifrar_opcional(cfg.password.as_deref())?;
+                Ok(Some(cfg))
+            }
+            None => Ok(None),
+        }
     } else {
         Ok(None)
     }
@@ -47,7 +60,9 @@ pub fn guardar_config_verifactu(
     password: Option<String>,
     entorno: String,
     db: State<'_, DbState>,
+    session: State<'_, SessionState>,
 ) -> AppResult<()> {
+    session.exigir(Permiso::ConfiguracionSistema)?;
     let conn = db.conn.lock().map_err(|e| {
         AppError::Interno(format!("Error de bloqueo de BD: {}", e))
     })?;
@@ -65,11 +80,14 @@ pub fn guardar_config_verifactu(
         verifactu = serde_json::json!({});
     }
 
+    // Los secretos se cifran antes de persistirse; la clave vive en el keyring del SO.
     if let Some(b64) = certificado_b64 {
-        verifactu["certificado_b64"] = serde_json::json!(b64);
+        let cifrado = crate::services::secret_store::cifrar(&b64)?;
+        verifactu["certificado_b64"] = serde_json::json!(cifrado);
     }
     if let Some(pw) = password {
-        verifactu["password"] = serde_json::json!(pw);
+        let cifrado = crate::services::secret_store::cifrar(&pw)?;
+        verifactu["password"] = serde_json::json!(cifrado);
     }
     verifactu["entorno"] = serde_json::json!(entorno);
 
@@ -119,7 +137,9 @@ pub fn obtener_datos_negocio(db: State<'_, DbState>) -> AppResult<Negocio> {
 pub fn guardar_datos_negocio(
     datos: ActualizarNegocio,
     db: State<'_, DbState>,
+    session: State<'_, SessionState>,
 ) -> AppResult<Negocio> {
+    session.exigir(Permiso::ConfiguracionSistema)?;
     let conn = db.conn.lock().map_err(|e| {
         AppError::Interno(format!("Error de bloqueo de BD: {}", e))
     })?;

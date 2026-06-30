@@ -24,8 +24,9 @@ impl TicketRepo {
             .lineas
             .iter()
             .map(|l| {
+                // Precio unitario bruto en céntimos.
                 let precio_unitario = if l.cantidad != 0.0 {
-                    l.total / l.cantidad
+                    (l.total as f64 / l.cantidad).round() as i64
                 } else {
                     l.total
                 };

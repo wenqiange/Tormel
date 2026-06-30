@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { TipoMovimiento } from "../../lib/api";
+import { parseEurosACentimos } from "../../lib/format";
 
 import "./CajaPanel.css";
 
@@ -17,8 +18,8 @@ export function MovimientoModal({ tipo, onClose, onConfirm }: MovimientoModalPro
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const val = parseFloat(importe);
-    if (isNaN(val) || val <= 0) {
+    const val = parseEurosACentimos(importe);
+    if (val === null || val <= 0) {
       setError("Introduce un importe válido mayor que 0");
       return;
     }

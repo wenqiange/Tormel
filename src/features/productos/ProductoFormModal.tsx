@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { api, Familia, Producto, NuevoProducto, ActualizarProducto } from "../../lib/api";
+import { centimosADecimalInput, parseEurosACentimos } from "../../lib/format";
 import { Image as ImageIcon, Trash2 } from "lucide-react";
 import { useDialog } from "../../context/DialogContext";
 
@@ -19,7 +20,9 @@ export function ProductoFormModal({
   onGuardado 
 }: ProductoFormModalProps) {
   const [nombre, setNombre] = useState(productoAEditar?.nombre || "");
-  const [precio, setPrecio] = useState(productoAEditar?.precio?.toString() || "");
+  const [precio, setPrecio] = useState(
+    productoAEditar?.precio != null ? centimosADecimalInput(productoAEditar.precio) : ""
+  );
   const [tipoIva, setTipoIva] = useState(productoAEditar?.tipo_iva?.toString() || "21");
   const [familiaId, setFamiliaId] = useState(
     productoAEditar?.familia_id || familiaSeleccionada || (familias[0]?.id ?? 0)
@@ -67,9 +70,15 @@ export function ProductoFormModal({
     setCargando(true);
     
     try {
-      const precioNum = parseFloat(precio);
+      const precioNum = parseEurosACentimos(precio);
       const ivaNum = parseFloat(tipoIva);
-      
+
+      if (precioNum === null || precioNum < 0) {
+        await showAlert({ title: "Error", message: "Precio inválido.", type: "danger" });
+        setCargando(false);
+        return;
+      }
+
       if (productoAEditar) {
         const actualizar: ActualizarProducto = {
           nombre,

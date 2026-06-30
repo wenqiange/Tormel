@@ -5,8 +5,9 @@ use serde::{Deserialize, Serialize};
 pub struct TicketLinea {
     pub producto_nombre: String,
     pub cantidad: f64,
-    pub precio_unitario: f64,
-    pub total: f64,
+    /// Importes en céntimos.
+    pub precio_unitario: i64,
+    pub total: i64,
 }
 
 /// Ticket guardado en el historial local.
@@ -24,9 +25,10 @@ pub struct Ticket {
     pub usuario_nombre: Option<String>,
     pub metodo_pago: Option<String>,
     pub comensales: i32,
-    pub subtotal: f64,
-    pub total_iva: f64,
-    pub total: f64,
+    // Importes en céntimos.
+    pub subtotal: i64,
+    pub total_iva: i64,
+    pub total: i64,
     pub qr_data: Option<String>,
     pub lineas: Vec<TicketLinea>,
     pub created_at: String,

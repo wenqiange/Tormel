@@ -36,10 +36,15 @@ impl UsuarioService {
             None,
         )?;
 
+        // Detectar si el usuario sigue con el PIN por defecto para que la
+        // interfaz pueda avisar de que debe cambiarlo.
+        let pin_por_defecto = verificar_pin(PIN_ADMIN_POR_DEFECTO, &usuario.pin_hash).unwrap_or(false);
+
         Ok(SesionUsuario {
             usuario_id: usuario.id,
             nombre: usuario.nombre.clone(),
             rol: usuario.rol.clone(),
+            pin_por_defecto,
         })
     }
 

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api, type Mesa, type Producto, type Familia, type VentaCompleta } from "../../lib/api";
+import { formatCentimos, centimosADecimalInput, parseEurosACentimos } from "../../lib/format";
 import { CheckoutModal } from "./CheckoutModal";
 import { SelectorModificadoresModal } from "./SelectorModificadoresModal";
 import { TecladoNumericoModal } from "../../components/TecladoNumericoModal";
@@ -125,8 +126,8 @@ export function OrderModal({ mesa, usuarioId, onClose }: OrderModalProps) {
           defaultValue: "",
           onAccept: async (precioInput) => {
             setTecladoNumerico(null);
-            const parsed = parseFloat(precioInput);
-            if (isNaN(parsed) || parsed < 0) {
+            const parsed = parseEurosACentimos(precioInput);
+            if (parsed === null || parsed < 0) {
               await showAlert({ title: "Error", message: "Precio inválido.", type: "danger" });
               return;
             }
@@ -193,7 +194,7 @@ export function OrderModal({ mesa, usuarioId, onClose }: OrderModalProps) {
 
   const handleCambiarPrecioLinea = (productoId: number, nombreProducto: string) => {
     const linea = ventaActiva?.lineas.find(l => l.producto_id === productoId);
-    const precioActual = linea ? (linea.total / linea.cantidad).toFixed(2) : "";
+    const precioActual = linea ? centimosADecimalInput(linea.total / linea.cantidad) : "";
 
     setTecladoNumerico({
       isOpen: true,
@@ -203,8 +204,8 @@ export function OrderModal({ mesa, usuarioId, onClose }: OrderModalProps) {
       placeholder: "0,00",
       onAccept: async (precioInput) => {
         setTecladoNumerico(null);
-        const parsed = parseFloat(precioInput);
-        if (isNaN(parsed) || parsed < 0) {
+        const parsed = parseEurosACentimos(precioInput);
+        if (parsed === null || parsed < 0) {
           await showAlert({ title: "Error", message: "Precio inválido.", type: "danger" });
           return;
         }
@@ -328,14 +329,14 @@ export function OrderModal({ mesa, usuarioId, onClose }: OrderModalProps) {
                   <div className="order-item-mods" style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '2px' }}>
                     {linea.modificadores.map(m => (
                       <span key={m.id} className="badge badge-secondary" style={{ fontSize: '0.7rem', padding: '2px 5px', borderRadius: '4px', backgroundColor: 'rgba(255,255,255,0.06)' }}>
-                        {m.nombre} {m.precio_extra > 0 ? `(+${m.precio_extra.toFixed(2)}€)` : ''}
+                        {m.nombre} {m.precio_extra > 0 ? `(+${formatCentimos(m.precio_extra)})` : ''}
                       </span>
                     ))}
                   </div>
                 )}
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  <span className="order-item-price-unit" style={{ fontSize: '0.8rem' }}>{(linea.total / linea.cantidad).toFixed(2)} €/u</span>
+                  <span className="order-item-price-unit" style={{ fontSize: '0.8rem' }}>{formatCentimos(linea.total / linea.cantidad)}/u</span>
                   <button 
                     className="btn-item-qty" 
                     style={{ padding: '2px', background: 'transparent', color: 'var(--color-text-secondary)', border: 'none', cursor: 'pointer' }}
@@ -375,7 +376,7 @@ export function OrderModal({ mesa, usuarioId, onClose }: OrderModalProps) {
                   <Plus size={14} />
                 </button>
                 
-                <span className="order-item-total" style={{ fontSize: '0.9rem', fontWeight: 'bold', minWidth: '60px', textAlign: 'right' }}>{(linea.total).toFixed(2)} €</span>
+                <span className="order-item-total" style={{ fontSize: '0.9rem', fontWeight: 'bold', minWidth: '60px', textAlign: 'right' }}>{formatCentimos(linea.total)}</span>
                 
                 <button
                   className="btn-item-delete"
@@ -401,15 +402,15 @@ export function OrderModal({ mesa, usuarioId, onClose }: OrderModalProps) {
         <div className="order-summary-section" style={{ padding: '0.75rem 1rem' }}>
           <div className="summary-row" style={{ fontSize: '0.85rem' }}>
             <span>Subtotal (Base Imponible)</span>
-            <span>{subtotal.toFixed(2)} €</span>
+            <span>{formatCentimos(subtotal)}</span>
           </div>
           <div className="summary-row" style={{ fontSize: '0.85rem' }}>
             <span>IVA (10%)</span>
-            <span>{iva.toFixed(2)} €</span>
+            <span>{formatCentimos(iva)}</span>
           </div>
           <div className="summary-row summary-total" style={{ fontSize: '1rem', marginTop: '4px' }}>
             <span>Total a Pagar</span>
-            <span>{total.toFixed(2)} €</span>
+            <span>{formatCentimos(total)}</span>
           </div>
 
           <div className="order-actions" style={{ marginTop: '0.5rem', gap: '0.5rem' }}>
@@ -547,7 +548,7 @@ export function OrderModal({ mesa, usuarioId, onClose }: OrderModalProps) {
                   >
                     <div className="product-card-info">
                       <span className="product-card-name">{prod.nombre}</span>
-                      <span className="product-card-price">{prod.precio.toFixed(2)} €</span>
+                      <span className="product-card-price">{formatCentimos(prod.precio)}</span>
                     </div>
                   </button>
                 );

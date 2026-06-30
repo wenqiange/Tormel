@@ -1,6 +1,7 @@
 mod auth;
 mod commands;
 mod db;
+mod dinero;
 mod error;
 mod models;
 mod repositories;
@@ -60,14 +61,15 @@ pub fn run() {
                             (1, 'Tipo de Leche', 1, 1, 1),
                             (2, 'Extras de Hamburguesa', 0, 0, 3);
                          
+                         -- precio_extra en céntimos enteros
                          INSERT INTO modificador (id, grupo_id, nombre, precio_extra, orden) VALUES
-                            (1, 1, 'Leche Entera', 0.0, 1),
-                            (2, 1, 'Leche Sin Lactosa', 0.10, 2),
-                            (3, 1, 'Leche de Avena', 0.20, 3),
-                            (4, 1, 'Leche de Soja', 0.20, 4),
-                            (5, 2, 'Extra Queso', 0.50, 1),
-                            (6, 2, 'Extra Bacon', 0.80, 2),
-                            (7, 2, 'Extra Huevo', 0.60, 3);
+                            (1, 1, 'Leche Entera', 0, 1),
+                            (2, 1, 'Leche Sin Lactosa', 10, 2),
+                            (3, 1, 'Leche de Avena', 20, 3),
+                            (4, 1, 'Leche de Soja', 20, 4),
+                            (5, 2, 'Extra Queso', 50, 1),
+                            (6, 2, 'Extra Bacon', 80, 2),
+                            (7, 2, 'Extra Huevo', 60, 3);
 
                          -- Asociar 'Tipo de Leche' al Café con Leche (13) y Capuccino (15)
                          INSERT INTO producto_modificador_grupo (producto_id, grupo_id) VALUES
@@ -90,6 +92,13 @@ pub fn run() {
             let db_conn = db_state.conn.clone();
             app.manage(db_state);
 
+            // Estado de sesión: el backend es la fuente de verdad de la identidad
+            // y los permisos del usuario que opera.
+            app.manage(auth::session::SessionState::default());
+
+            // Limitador de intentos de login (protección anti fuerza bruta de PIN).
+            app.manage(auth::login_guard::LoginGuard::default());
+
             // Iniciar worker de envío VeriFactu en segundo plano
             services::verifactu::sender_worker::iniciar_verifactu_worker(db_conn);
 
@@ -98,6 +107,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             // Usuarios
             commands::usuarios::login,
+            commands::usuarios::logout,
             commands::usuarios::es_primera_ejecucion,
             commands::usuarios::crear_admin_inicial,
             commands::usuarios::listar_usuarios,

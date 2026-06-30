@@ -44,6 +44,21 @@ quick-xml = "0.40.1"
 reqwest = { version = "0.13.4", default-features = false, features = ["native-tls"] }
 lettre = { version = "0.11.22", features = ["builder", "native-tls"] }
 
+# Secretos: cifrado AEAD de los secretos almacenados (la clave vive en el keyring del SO)
+chacha20poly1305 = "0.10"
+
+# Almacén de credenciales del SO para la clave maestra de cifrado.
+# Se elige un backend sin dependencias de sistema por plataforma para no requerir
+# librerías nativas (importante para el CI en Linux: keyutils es Rust puro).
+[target.'cfg(target_os = "windows")'.dependencies]
+keyring = { version = "3", features = ["windows-native"] }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+keyring = { version = "3", features = ["apple-native"] }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+keyring = { version = "3", features = ["linux-native"] }
+
 [profile.release]
 strip = true
 lto = true

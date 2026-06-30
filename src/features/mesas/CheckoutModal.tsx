@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { api, type Mesa, type MetodoPago } from "../../lib/api";
+import { formatCentimos, centimosADecimalInput, parseEurosACentimos } from "../../lib/format";
 import { Banknote, CreditCard, Layers, Zap } from "lucide-react";
 import { useDialog } from "../../context/DialogContext";
 import "./CheckoutModal.css";
@@ -20,9 +21,11 @@ export function CheckoutModal({ mesa, ventaId, total, onClose, onSuccess }: Chec
   const [qrData, setQrData] = useState<string | null>(null);
   const { showAlert } = useDialog();
 
-  const entregadoNum = parseFloat(entregadoStr) || 0;
-  const cambio = entregadoNum > total ? entregadoNum - total : 0;
-  const falta = total > entregadoNum ? total - entregadoNum : 0;
+  // `total` viene en céntimos. La entrada del usuario (`entregadoStr`) está en euros.
+  const totalEuros = total / 100;
+  const entregadoCentimos = parseEurosACentimos(entregadoStr) ?? 0;
+  const cambio = entregadoCentimos > total ? entregadoCentimos - total : 0;
+  const falta = total > entregadoCentimos ? total - entregadoCentimos : 0;
 
   // Manejo de pulsaciones del Numpad
   const handleKeyClick = (key: string) => {
@@ -42,25 +45,25 @@ export function CheckoutModal({ mesa, ventaId, total, onClose, onSuccess }: Chec
     }
   };
 
-  // Precios sugeridos rápidos
+  // Precios sugeridos rápidos (en euros, para botones de pago en efectivo)
   const sugeridos = [
-    total,
-    Math.ceil(total),
-    Math.ceil(total / 5) * 5,
-    Math.ceil(total / 10) * 10,
-    Math.ceil(total / 20) * 20,
-    Math.ceil(total / 50) * 50,
-  ].filter((val, index, self) => val >= total && self.indexOf(val) === index).slice(0, 4);
+    totalEuros,
+    Math.ceil(totalEuros),
+    Math.ceil(totalEuros / 5) * 5,
+    Math.ceil(totalEuros / 10) * 10,
+    Math.ceil(totalEuros / 20) * 20,
+    Math.ceil(totalEuros / 50) * 50,
+  ].filter((val, index, self) => val >= totalEuros && self.indexOf(val) === index).slice(0, 4);
 
   const handleConfirmarCobro = async () => {
-    if (metodo === "efectivo" && entregadoNum < total) {
+    if (metodo === "efectivo" && entregadoCentimos < total) {
       await showAlert("El importe entregado es menor que el total de la cuenta.");
       return;
     }
 
     try {
       setLoading(true);
-      const importeFinal = metodo === "efectivo" ? entregadoNum : total;
+      const importeFinal = metodo === "efectivo" ? entregadoCentimos : total;
       const qr_url = await api.cobrarVenta(ventaId, metodo, importeFinal);
       setQrData(qr_url);
     } catch (err) {
@@ -111,7 +114,7 @@ export function CheckoutModal({ mesa, ventaId, total, onClose, onSuccess }: Chec
           {/* Total Destacado */}
           <div className="checkout-total-banner">
             <span className="total-label">TOTAL A COBRAR</span>
-            <span className="total-amount">{total.toFixed(2)} €</span>
+            <span className="total-amount">{formatCentimos(total)}</span>
           </div>
 
           {/* Selector de Método de Pago */}
@@ -132,7 +135,7 @@ export function CheckoutModal({ mesa, ventaId, total, onClose, onSuccess }: Chec
               className={`method-btn ${metodo === "tarjeta" ? "active" : ""}`}
               onClick={() => {
                 setMetodo("tarjeta");
-                setEntregadoStr(total.toString());
+                setEntregadoStr(centimosADecimalInput(total));
               }}
               disabled={loading}
             >
@@ -144,7 +147,7 @@ export function CheckoutModal({ mesa, ventaId, total, onClose, onSuccess }: Chec
               className={`method-btn ${metodo === "otro" ? "active" : ""}`}
               onClick={() => {
                 setMetodo("otro");
-                setEntregadoStr(total.toString());
+                setEntregadoStr(centimosADecimalInput(total));
               }}
               disabled={loading}
             >
@@ -180,7 +183,7 @@ export function CheckoutModal({ mesa, ventaId, total, onClose, onSuccess }: Chec
                 <div className={`cash-change-field ${cambio > 0 ? "has-change" : ""}`}>
                   <span className="display-label">{cambio > 0 ? "Cambio a devolver" : "Falta por pagar"}</span>
                   <span className="display-value">
-                    {cambio > 0 ? `${cambio.toFixed(2)} €` : `${falta.toFixed(2)} €`}
+                    {cambio > 0 ? formatCentimos(cambio) : formatCentimos(falta)}
                   </span>
                 </div>
               </div>
@@ -213,7 +216,7 @@ export function CheckoutModal({ mesa, ventaId, total, onClose, onSuccess }: Chec
             <div className="non-cash-info-section animate-fadeIn">
               <span className="payment-ready-icon"><Zap size={48} /></span>
               <p>Proceda al cobro mediante la pasarela de pago o datáfono.</p>
-              <p className="subtext">El importe a cargar en el terminal es de {total.toFixed(2)} €</p>
+              <p className="subtext">El importe a cargar en el terminal es de {formatCentimos(total)}</p>
             </div>
           )}
         </div>
@@ -227,7 +230,7 @@ export function CheckoutModal({ mesa, ventaId, total, onClose, onSuccess }: Chec
           <button
             className="btn btn-primary btn-lg btn-confirm-pay"
             onClick={handleConfirmarCobro}
-            disabled={loading || (metodo === "efectivo" && entregadoNum < total)}
+            disabled={loading || (metodo === "efectivo" && entregadoCentimos < total)}
           >
             {loading ? "Registrando VeriFactu..." : "Confirmar Cobro"}
           </button>

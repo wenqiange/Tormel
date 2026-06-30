@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { X, Check } from "lucide-react";
 import type { Producto, GrupoModificadoresConElementos } from "../../lib/api";
+import { formatCentimos } from "../../lib/format";
 import "./SelectorModificadoresModal.css";
 
 interface SelectorModificadoresModalProps {
@@ -107,7 +108,7 @@ export function SelectorModificadoresModal({ producto, grupos, onClose, onSave }
                         </span>
                         <span className="mod-option-name">{mod.nombre}</span>
                         {mod.precio_extra > 0 && (
-                          <span className="mod-option-price">+{mod.precio_extra.toFixed(2)} €</span>
+                          <span className="mod-option-price">+{formatCentimos(mod.precio_extra)}</span>
                         )}
                       </button>
                     );
@@ -121,7 +122,7 @@ export function SelectorModificadoresModal({ producto, grupos, onClose, onSave }
         <footer className="selector-mods-footer">
           <div className="selector-price-summary">
             <span className="label">Precio final:</span>
-            <span className="value">{precioFinal.toFixed(2)} €</span>
+            <span className="value">{formatCentimos(precioFinal)}</span>
           </div>
           <div className="footer-actions">
             <button className="btn btn-secondary" onClick={onClose}>Cancelar</button>

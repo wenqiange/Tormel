@@ -22,6 +22,12 @@ pub enum AppError {
     #[error("Usuario inactivo")]
     UsuarioInactivo,
 
+    #[error("No hay ninguna sesión activa. Inicie sesión.")]
+    NoAutenticado,
+
+    #[error("Demasiados intentos fallidos. Espere {0} segundos e inténtelo de nuevo.")]
+    DemasiadosIntentos(u64),
+
     #[error("Permiso denegado: {0}")]
     PermisoDenegado(String),
 

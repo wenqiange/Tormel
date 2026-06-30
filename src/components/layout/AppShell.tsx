@@ -1,6 +1,6 @@
 import React, { useState } from "react";
-import { LayoutDashboard, ShoppingCart, Users, Grid3X3, PackageOpen, Receipt, Landmark, DollarSign, User, FileText, Settings } from "lucide-react";
-import { logout } from "../../stores/authStore";
+import { LayoutDashboard, ShoppingCart, Users, Grid3X3, PackageOpen, Receipt, Landmark, DollarSign, User, FileText, Settings, ShieldAlert } from "lucide-react";
+import { logout, useAuth } from "../../stores/authStore";
 import type { Rol } from "../../lib/api";
 import { MesasPanel } from "../../features/mesas/MesasPanel";
 import { VentasPanel } from "../../features/ventas/VentasPanel";
@@ -46,6 +46,7 @@ const navItems: NavItem[] = [
 
 export function AppShell({ nombre, rol, usuarioId }: AppShellProps) {
   const [vistaActiva, setVistaActiva] = useState<string>("mesas");
+  const { pinPorDefecto } = useAuth();
 
   const visibleItems = navItems.filter(
     (item) => !item.minRol || item.minRol.includes(rol)
@@ -130,6 +131,27 @@ export function AppShell({ nombre, rol, usuarioId }: AppShellProps) {
             <span className="badge badge-success">Caja abierta</span>
           </div>
         </header>
+        {pinPorDefecto && (
+          <div
+            role="alert"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "0.6rem",
+              padding: "0.6rem 1rem",
+              background: "rgba(239, 68, 68, 0.12)",
+              color: "#f87171",
+              borderBottom: "1px solid rgba(239, 68, 68, 0.3)",
+              fontSize: "0.9rem",
+            }}
+          >
+            <ShieldAlert size={18} />
+            <span>
+              Estás usando el <strong>PIN por defecto</strong>. Cámbialo cuanto antes en
+              Usuarios para proteger tu cuenta.
+            </span>
+          </div>
+        )}
         <div className="app-content">
           {renderContenido()}
         </div>

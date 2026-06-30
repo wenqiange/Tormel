@@ -38,4 +38,7 @@ pub struct SesionUsuario {
     pub usuario_id: i64,
     pub nombre: String,
     pub rol: Rol,
+    /// `true` si el usuario sigue usando el PIN por defecto (111111) y debería
+    /// cambiarlo. La interfaz lo usa para avisar/forzar el cambio.
+    pub pin_por_defecto: bool,
 }

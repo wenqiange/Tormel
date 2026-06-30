@@ -69,7 +69,7 @@ impl CajaRepo {
     }
 
     /// Abre un nuevo turno de caja.
-    pub fn abrir_turno(conn: &Connection, usuario_id: i64, fondo_inicial: f64) -> AppResult<TurnoCaja> {
+    pub fn abrir_turno(conn: &Connection, usuario_id: i64, fondo_inicial: i64) -> AppResult<TurnoCaja> {
         if let Some(_) = Self::obtener_turno_activo(conn)? {
             return Err(crate::error::AppError::Validation("Ya existe un turno de caja abierto. Ciérrelo antes de abrir uno nuevo.".into()));
         }
@@ -89,7 +89,7 @@ impl CajaRepo {
         turno_id: i64,
         usuario_id: i64,
         tipo: TipoMovimiento,
-        importe: f64,
+        importe: i64,
         concepto: &str,
     ) -> AppResult<MovimientoCaja> {
         let turno = Self::obtener_por_id(conn, turno_id)?
@@ -156,7 +156,7 @@ impl CajaRepo {
     pub fn cerrar_turno(
         conn: &Connection,
         turno_id: i64,
-        fondo_final_declarado: f64,
+        fondo_final_declarado: i64,
         notas: Option<&str>,
     ) -> AppResult<ResumenCierre> {
         let turno = Self::obtener_por_id(conn, turno_id)?
@@ -187,10 +187,10 @@ impl CajaRepo {
         let turno = Self::obtener_por_id(conn, turno_id)?
             .ok_or_else(|| crate::error::AppError::Validation("Turno no encontrado".into()))?;
 
-        let (total_entradas, total_salidas): (f64, f64) = conn.query_row(
+        let (total_entradas, total_salidas): (i64, i64) = conn.query_row(
             "SELECT 
-                COALESCE(SUM(CASE WHEN tipo = 'entrada' THEN importe ELSE 0 END), 0.0),
-                COALESCE(SUM(CASE WHEN tipo = 'salida' THEN importe ELSE 0 END), 0.0)
+                COALESCE(SUM(CASE WHEN tipo = 'entrada' THEN importe ELSE 0 END), 0),
+                COALESCE(SUM(CASE WHEN tipo = 'salida' THEN importe ELSE 0 END), 0)
              FROM movimiento_caja 
              WHERE turno_id = ?1",
             params![turno_id],
@@ -199,7 +199,7 @@ impl CajaRepo {
 
         let efectivo_esperado = turno.fondo_inicial + turno.total_efectivo + total_entradas - total_salidas;
         
-        let diferencia = turno.diferencia.unwrap_or(0.0);
+        let diferencia = turno.diferencia.unwrap_or(0);
 
         let nombre_usuario: String = conn.query_row(
             "SELECT nombre FROM usuario WHERE id = ?1",

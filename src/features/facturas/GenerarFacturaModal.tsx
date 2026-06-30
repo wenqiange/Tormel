@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api, type Cliente, type Ticket, type Negocio } from "../../lib/api";
+import { formatCentimos } from "../../lib/format";
 import { X, Download, Mail } from "lucide-react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -91,8 +92,8 @@ export function GenerarFacturaModal({ ticket, onClose }: GenerarFacturaModalProp
       const tableRows = ticket.lineas.map(linea => [
         linea.producto_nombre,
         linea.cantidad.toString(),
-        `${linea.precio_unitario.toFixed(2)} €`,
-        `${linea.total.toFixed(2)} €`
+        formatCentimos(linea.precio_unitario),
+        formatCentimos(linea.total)
       ]);
 
       autoTable(doc, {
@@ -113,16 +114,16 @@ export function GenerarFacturaModal({ ticket, onClose }: GenerarFacturaModalProp
       const finalY = (doc as any).lastAutoTable.finalY + 10;
       doc.setFont("helvetica", "bold");
       
-      const subtotal = ticket.subtotal.toFixed(2);
-      const iva = ticket.total_iva.toFixed(2);
-      const total = ticket.total.toFixed(2);
+      const subtotal = formatCentimos(ticket.subtotal);
+      const iva = formatCentimos(ticket.total_iva);
+      const total = formatCentimos(ticket.total);
       
-      doc.text(`Subtotal: ${subtotal} €`, 140, finalY);
-      doc.text(`IVA: ${iva} €`, 140, finalY + 7);
+      doc.text(`Subtotal: ${subtotal}`, 140, finalY);
+      doc.text(`IVA: ${iva}`, 140, finalY + 7);
       
       doc.setFontSize(14);
       doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-      doc.text(`TOTAL: ${total} €`, 140, finalY + 15);
+      doc.text(`TOTAL: ${total}`, 140, finalY + 15);
 
       return { doc, cliente };
     } catch (err) {
@@ -196,7 +197,7 @@ export function GenerarFacturaModal({ ticket, onClose }: GenerarFacturaModalProp
             </div>
             <div className="resumen-item">
               <span className="label">Total Ticket:</span>
-              <span className="value fw-500">{ticket.total.toFixed(2)} €</span>
+              <span className="value fw-500">{formatCentimos(ticket.total)}</span>
             </div>
           </div>
 

@@ -1,4 +1,6 @@
 use tauri::State;
+use crate::auth::permissions::Permiso;
+use crate::auth::session::SessionState;
 use crate::db::connection::DbState;
 use crate::error::{AppError, AppResult};
 use crate::models::cliente::{ActualizarCliente, Cliente, NuevoCliente};
@@ -24,7 +26,9 @@ pub fn obtener_cliente(id: i64, db: State<'_, DbState>) -> AppResult<Cliente> {
 pub fn crear_cliente(
     nuevo: NuevoCliente,
     db: State<'_, DbState>,
+    session: State<'_, SessionState>,
 ) -> AppResult<Cliente> {
+    session.exigir(Permiso::ClienteGestionar)?;
     let conn = db.conn.lock().map_err(|e| {
         AppError::Interno(format!("Error de bloqueo de base de datos: {}", e))
     })?;
@@ -36,7 +40,9 @@ pub fn actualizar_cliente(
     id: i64,
     actualizar: ActualizarCliente,
     db: State<'_, DbState>,
+    session: State<'_, SessionState>,
 ) -> AppResult<Cliente> {
+    session.exigir(Permiso::ClienteGestionar)?;
     let conn = db.conn.lock().map_err(|e| {
         AppError::Interno(format!("Error de bloqueo de base de datos: {}", e))
     })?;
@@ -44,7 +50,8 @@ pub fn actualizar_cliente(
 }
 
 #[tauri::command]
-pub fn eliminar_cliente(id: i64, db: State<'_, DbState>) -> AppResult<()> {
+pub fn eliminar_cliente(id: i64, db: State<'_, DbState>, session: State<'_, SessionState>) -> AppResult<()> {
+    session.exigir(Permiso::ClienteGestionar)?;
     let conn = db.conn.lock().map_err(|e| {
         AppError::Interno(format!("Error de bloqueo de base de datos: {}", e))
     })?;
